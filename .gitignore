@@ -114,6 +114,7 @@ fabric.properties
 
 
 # CMake ================================
+!log4cplus/bin
 bin/
 build/
 publish/

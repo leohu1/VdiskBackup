@@ -12,9 +12,10 @@ if(MSVC)
     add_compile_options("/source-charset:utf-8")
 endif()
 
-if (CMAKE_BUILD_TYPE STREQUAL DEBUG)
+if ("${CMAKE_BUILD_TYPE}" STREQUAL Debug)
+    message(Debugging)
     list(APPEND PROJECT_REQUIRED_DLL ${PROJECT_SOURCE_DIR}/log4cplus/bin/log4cplusUD.dll)
-else ()
+else ("${CMAKE_BUILD_TYPE}" STREQUAL Releast)
     list(APPEND PROJECT_REQUIRED_DLL ${PROJECT_SOURCE_DIR}/log4cplus/bin/log4cplusU.dll)
 endif ()
 

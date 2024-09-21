@@ -82,7 +82,7 @@ bool FileSystem::CopyFileWithProgressBar(const cutl::filepath &srcpath, const cu
             total_size = total_size_l;
         }
         fseek(fr,0, SEEK_SET);
-        size_t total_num = total_size / buf_size + 1;
+        size_t total_num = total_size / buf_size;
         size_t write_num = 0;
         std::string size_string = BuildSizeString(total_size);
         ProgressBar bar{

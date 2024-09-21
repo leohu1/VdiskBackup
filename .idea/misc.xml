@@ -2,9 +2,13 @@
 <project version="4">
   <component name="CMakeWorkspace" PROJECT_DIR="$PROJECT_DIR$" />
   <component name="CidrRootsConfiguration">
+    <sourceRoots>
+      <file path="$PROJECT_DIR$/VdiskBackup" />
+    </sourceRoots>
     <excludeRoots>
       <file path="$PROJECT_DIR$/cmake-build-debug" />
       <file path="$PROJECT_DIR$/cmake-build-release" />
+      <file path="$PROJECT_DIR$/out" />
     </excludeRoots>
   </component>
 </project>

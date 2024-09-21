@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.27)
 project(VdiskBackup)
-set(PROJECT_REQUIRED_DLL ${PROJECT_SOURCE_DIR}/log4cplus/bin/log4cplusUD.dll)
+set(PROJECT_REQUIRED_DLL ${PROJECT_SOURCE_DIR}/log4cplus/bin/loggingserverU.exe)
 set(PROJECT_REQUIRED_CONF ${PROJECT_SOURCE_DIR}/log.conf ${PROJECT_SOURCE_DIR}/CopySettings.yaml)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin)
@@ -11,6 +11,12 @@ set(INDICATORS_SUBPROJECT 1)
 if(MSVC)
     add_compile_options("/source-charset:utf-8")
 endif()
+
+if (CMAKE_BUILD_TYPE STREQUAL DEBUG)
+    list(APPEND PROJECT_REQUIRED_DLL ${PROJECT_SOURCE_DIR}/log4cplus/bin/log4cplusUD.dll)
+else ()
+    list(APPEND PROJECT_REQUIRED_DLL ${PROJECT_SOURCE_DIR}/log4cplus/bin/log4cplusU.dll)
+endif ()
 
 add_executable(${PROJECT_NAME} main.cpp
         FileSystem.cpp

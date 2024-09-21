@@ -114,8 +114,8 @@ fabric.properties
 
 
 # CMake ================================
-!log4cplus/bin
-bin/
+!VdiskBackup/log4cplus/*
+!VdiskBackup/indicators/*
 build/
 publish/
 CMakeLists.txt.user
@@ -129,4 +129,8 @@ install_manifest.txt
 compile_commands.json
 CTestTestfile.cmake
 
+
+!VdiskBackup/log4cplus/bin/log4cplusU.dll
+!VdiskBackup/log4cplus/bin/log4cplusUD.dll
+!VdiskBackup/log4cplus/bin/loggingserverU.exe
 

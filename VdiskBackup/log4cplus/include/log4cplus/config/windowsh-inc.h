@@ -148,9 +148,9 @@
 #undef NOMCX
 #define NOMCX
 
-#include <WinSock2.h>
-#include <WS2tcpip.h>
-#include <Windows.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <windows.h>
 #if defined (LOG4CPLUS_HAVE_INTRIN_H)
 #include <intrin.h>
 #endif

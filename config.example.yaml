@@ -1,5 +1,0 @@
-# 本文件应置于磁盘根目录
-from:
-  -
-    id : vdisk.base # 用于标记的ID
-    path : vdisk.base.vhdx # 相对于根目录的文件路径

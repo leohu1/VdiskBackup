@@ -1,0 +1,58 @@
+cmake_minimum_required(VERSION 3.27)
+project(VdiskBackup)
+set(PROJECT_REQUIRED_DLL ${PROJECT_SOURCE_DIR}/log4cplus/bin/log4cplusUD.dll)
+set(PROJECT_REQUIRED_CONF ${PROJECT_SOURCE_DIR}/log.conf ${PROJECT_SOURCE_DIR}/CopySettings.yaml)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin)
+
+set(CMAKE_CXX_STANDARD 20)
+set(INDICATORS_SUBPROJECT 1)
+
+if(MSVC)
+    add_compile_options("/source-charset:utf-8")
+endif()
+
+add_executable(${PROJECT_NAME} main.cpp
+        FileSystem.cpp
+        FileSystem.h
+        VolumeSystem.cpp
+        VolumeSystem.h
+        VdiskBackupManager.cpp
+        VdiskBackupManager.h
+        VdiskBackupManager.h
+)
+add_subdirectory(common_util)
+
+include(FetchContent)
+FetchContent_Declare(
+        yaml-cpp
+        GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+        GIT_TAG 0.8.0 # Can be a tag (yaml-cpp-x.x.x), a commit hash, or a branch name (master)
+)
+FetchContent_MakeAvailable(yaml-cpp)
+
+set(log4cplus_DIR ${PROJECT_SOURCE_DIR}/log4cplus/lib/cmake/log4cplus)
+find_package(log4cplus REQUIRED)
+
+set(indicators_DIR ${PROJECT_SOURCE_DIR}/indicators/lib/cmake/indicators)
+find_package(indicators REQUIRED)
+
+target_link_libraries(${PROJECT_NAME} PUBLIC log4cplus::log4cplusU indicators::indicators)
+target_link_libraries(${PROJECT_NAME} PUBLIC common_util yaml-cpp)
+
+foreach (REQUIRED_DLL ${PROJECT_REQUIRED_DLL})
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+            "${REQUIRED_DLL}"
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
+    message(STATUS "COPY ST_DLL ${REQUIRED_DLL}")
+endforeach (REQUIRED_DLL)
+
+foreach (REQUIRED_CONF ${PROJECT_REQUIRED_CONF})
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+            "${REQUIRED_CONF}"
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
+    message(STATUS "COPY CONF ${REQUIRED_CONF}")
+endforeach (REQUIRED_CONF)
+

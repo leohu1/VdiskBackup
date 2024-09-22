@@ -1,7 +1,0 @@
-includedir=C:/Users/26071/Desktop/indicators/build/installed/include
-
-Name: indicators
-Description: Activity Indicators for Modern C++
-URL: https://github.com/p-ranav/indicators
-Version: 2.3.0
-Cflags: -I${includedir}

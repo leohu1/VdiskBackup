@@ -130,7 +130,5 @@ compile_commands.json
 CTestTestfile.cmake
 
 
-!VdiskBackup/log4cplus/bin/log4cplusU.dll
-!VdiskBackup/log4cplus/bin/log4cplusUD.dll
-!VdiskBackup/log4cplus/bin/loggingserverU.exe
+!VdiskBackup/log4cplus/lib/log4cplusSU.lib
 

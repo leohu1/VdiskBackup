@@ -4,15 +4,10 @@
 
 #include "FileSystem.h"
 #include "common_util/inner/filesystem.h"
-#include <indicators/cursor_control.hpp>
-#include <indicators/progress_bar.hpp>
-#include <indicators/setting.hpp>
-#include <log4cplus/configurator.h>
-#include <log4cplus/logger.h>
-#include <log4cplus/loggingmacros.h>
+#include "indicators.h"
+#include "spdlog/spdlog.h"
 #include <Windows.h>
 #include <string>
-using namespace log4cplus;
 using namespace indicators;
 
 LPWSTR charToLPWSTR(const char* charArray) {
@@ -27,7 +22,6 @@ bool FileSystem::CopyFileWithProgressBar(const cutl::filepath &srcpath, const cu
     // Hide cursor
     show_console_cursor(false);
 
-    Logger logger = Logger::getInstance(LOG4CPLUS_TEXT("main"));
     if (srcpath.isfile())
     {
         if (dstpath.exists())
@@ -38,14 +32,14 @@ bool FileSystem::CopyFileWithProgressBar(const cutl::filepath &srcpath, const cu
         FILE *fr, *fw;
         if (fopen_s(&fr, srcpath.str().c_str(), "rb") != 0)
         {
-            LOG4CPLUS_ERROR(logger, ("open file failed, " + srcpath.str()).c_str());
+            SPDLOG_ERROR("open file failed, " + srcpath.str());
             return false;
         }
         cutl::file_guard frd(fr);
 
         if (fopen_s(&fw, dstpath.str().c_str(), "wb") != 0)
         {
-            LOG4CPLUS_ERROR(logger, ("open file failed, " + srcpath.str()).c_str());
+            SPDLOG_ERROR("open file failed, " + srcpath.str());
             return false;
         }
         cutl::file_guard fwt(fw);
@@ -69,12 +63,12 @@ bool FileSystem::CopyFileWithProgressBar(const cutl::filepath &srcpath, const cu
                                NULL);
             if (hFile == INVALID_HANDLE_VALUE){
                 DWORD errCode = GetLastError();
-                LOG4CPLUS_ERROR(logger, ("get file size fail, get error code:" + std::to_string(errCode)).c_str());
+                SPDLOG_ERROR("get file size fail, get error code:" + std::to_string(errCode));
                 return false;
             }
             if (GetFileSizeEx(hFile, &fr_size) == 0){
                 DWORD errCode = GetLastError();
-                LOG4CPLUS_ERROR(logger, ("get file size fail, get error code:" + std::to_string(errCode)).c_str());
+                SPDLOG_ERROR("get file size fail, get error code:" + std::to_string(errCode));
                 return false;
             }
             total_size = fr_size.QuadPart;
@@ -85,6 +79,29 @@ bool FileSystem::CopyFileWithProgressBar(const cutl::filepath &srcpath, const cu
         size_t total_num = total_size / buf_size;
         size_t write_num = 0;
         std::string size_string = BuildSizeString(total_size);
+
+        // Set output mode to handle virtual terminal sequences
+        HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (hOut == INVALID_HANDLE_VALUE)
+        {
+            SPDLOG_ERROR("get console mode fail, get error code:" + std::to_string(GetLastError()));
+          return false;
+        }
+
+        DWORD dwMode = 0;
+        if (!GetConsoleMode(hOut, &dwMode))
+        {
+            SPDLOG_ERROR("get console mode fail, get error code:" + std::to_string(GetLastError()));
+          return false;
+        }
+
+        dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+        if (!SetConsoleMode(hOut, dwMode))
+        {
+            SPDLOG_ERROR("set console mode fail, get error code:" + std::to_string(GetLastError()));
+          return false;
+        }
+
         ProgressBar bar{
                 option::BarWidth{50},
                 option::Start{"["},
@@ -92,22 +109,21 @@ bool FileSystem::CopyFileWithProgressBar(const cutl::filepath &srcpath, const cu
                 option::Lead{"■"},
                 option::Remainder{"-"},
                 option::End{" ]"},
-                option::ForegroundColor{Color::cyan},
-                option::FontStyles{std::vector<FontStyle>{FontStyle::bold}},
                 option::MaxProgress{total_num},
                 option::ShowElapsedTime{true},
                 option::ShowRemainingTime{true},
+                option::Stream{std::cout},
         };
         if (prefix_text.empty() == 0){
-            bar.set_option(option::PrefixText{prefix_text});
+            std::cout << prefix_text << std::endl;
         }
         while ((read_size = fread(buffer, 1, buf_size, frd.getfd())) > 0)
         {
             write_size = fwrite(buffer, 1, read_size, fwt.getfd());
             if (write_size != read_size)
             {
-                LOG4CPLUS_ERROR(logger,("write file failed, only write " +
-                                        std::to_string(write_size) + ", read_size:" + std::to_string(read_size)).c_str());
+                SPDLOG_ERROR("write file failed, only write " +
+                                        std::to_string(write_size) + ", read_size:" + std::to_string(read_size));
                 return false;
             }
             write_num += 1;
@@ -119,12 +135,12 @@ bool FileSystem::CopyFileWithProgressBar(const cutl::filepath &srcpath, const cu
         int ret = fflush(fwt.getfd());
         if (0 != ret)
         {
-            LOG4CPLUS_ERROR(logger, ("fail to flush file:" + dstpath.str()).c_str());
+            SPDLOG_ERROR("fail to flush file:" + dstpath.str());
             return false;
         }
         if (!cutl::file_sync(fwt.getfd()))
         {
-            LOG4CPLUS_ERROR(logger, ("file_sync failed for " + dstpath.str()).c_str());
+            SPDLOG_ERROR("file_sync failed for " + dstpath.str());
             return false;
         }
     }

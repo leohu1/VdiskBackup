@@ -1,16 +1,11 @@
 cmake_minimum_required(VERSION 3.27)
 project(VdiskBackup)
-set(PROJECT_REQUIRED_DLL ${PROJECT_SOURCE_DIR}/log4cplus/bin/loggingserverU.exe)
+
+set(CMAKE_CXX_STANDARD 20)
+
 set(PROJECT_REQUIRED_CONF ${PROJECT_SOURCE_DIR}/log.conf ${PROJECT_SOURCE_DIR}/CopySettings.yaml)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin)
-
-set(CMAKE_CXX_STANDARD 20)
-set(INDICATORS_SUBPROJECT 1)
-
-if(MSVC)
-    add_compile_options("/source-charset:utf-8")
-endif()
 
 if ("${CMAKE_BUILD_TYPE}" STREQUAL Debug)
     message(Debugging)
@@ -27,7 +22,11 @@ add_executable(${PROJECT_NAME} main.cpp
         VdiskBackupManager.cpp
         VdiskBackupManager.h
         VdiskBackupManager.h
+        indicators.h
 )
+
+set_target_properties(${PROJECT_NAME} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 add_subdirectory(common_util)
 
 include(FetchContent)
@@ -38,13 +37,10 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(yaml-cpp)
 
-set(log4cplus_DIR ${PROJECT_SOURCE_DIR}/log4cplus/lib/cmake/log4cplus)
-find_package(log4cplus REQUIRED)
+set(spdlog_DIR ${PROJECT_SOURCE_DIR}/spdlog/lib/cmake/spdlog)
+find_package(spdlog REQUIRED)
 
-set(indicators_DIR ${PROJECT_SOURCE_DIR}/indicators/lib/cmake/indicators)
-find_package(indicators REQUIRED)
-
-target_link_libraries(${PROJECT_NAME} PUBLIC log4cplus::log4cplusU indicators::indicators)
+target_link_libraries(${PROJECT_NAME} PUBLIC spdlog::spdlog)
 target_link_libraries(${PROJECT_NAME} PUBLIC common_util yaml-cpp)
 
 foreach (REQUIRED_DLL ${PROJECT_REQUIRED_DLL})

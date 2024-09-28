@@ -270,6 +270,7 @@ std::string VirtDiskSystem::GetVdiskParents(std::string path){
                                         OPEN_VIRTUAL_DISK_FLAG_NONE,&OpenParameters, &handle);
     if (result_open != 0){
         SPDLOG_ERROR("Have error opening vhdx file, result %d", result_open);
+        return "";
     }
     GET_VIRTUAL_DISK_INFO* disk_info;
     DWORD OutBufferSize = sizeof(GET_VIRTUAL_DISK_INFO);
@@ -280,9 +281,10 @@ std::string VirtDiskSystem::GetVdiskParents(std::string path){
     }
     // get disk type
     disk_info -> Version = GET_VIRTUAL_DISK_INFO_PROVIDER_SUBTYPE;
+    DWORD result;
 
-    if (GetVirtualDiskInformation(handle, &OutBufferSize, disk_info,
-                                  nullptr) == ERROR_BUFFER_OVERFLOW){
+    if ((result = GetVirtualDiskInformation(handle, &OutBufferSize, disk_info,
+                                  nullptr)) == ERROR_BUFFER_OVERFLOW){
         free(disk_info);
         disk_info  = (GET_VIRTUAL_DISK_INFO*) malloc(OutBufferSize);
         if (disk_info == nullptr){

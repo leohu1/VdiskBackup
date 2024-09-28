@@ -54,9 +54,11 @@ int main()
     spdlog::set_default_logger(logger);
     cutl::library_init(library_log_func);
 
-    VdiskBackupManager manager;
-    manager.GetAllConfigs();
-    manager.StartBackup();
+//    VdiskBackupManager manager;
+//    manager.GetAllConfigs();
+//    manager.StartBackup();
+
+    VirtDiskSystem::GetVdiskParents("C:\\windows_test.child.vhdx");
 
     spdlog::drop_all();
     return 0;

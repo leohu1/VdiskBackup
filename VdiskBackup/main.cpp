@@ -1,11 +1,10 @@
 #include <iostream>
 #include "common_util/common_util.h"
 #include "VdiskBackupManager.h"
-#include "spdlog/sinks/rotating_file_sink.h"
-#include "spdlog/sinks/stdout_color_sinks.h"
-#include "spdlog/async_logger.h"
-#include "spdlog/async.h"
 #include <spdlog/spdlog.h>
+#include <spdlog/async.h>
+#include <spdlog/sinks/rotating_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 static std::mutex g_log_mtx_;
 
@@ -32,6 +31,7 @@ void static library_log_func(cutl::loglevel level, const std::string &msg)
 
 int main()
 {
+    spdlog::init_thread_pool(8192, 1);
     // Create a file rotating logger with 5 MB size max and 3 rotated files
     auto max_size = 1048576 * 5;
     auto max_files = 3;

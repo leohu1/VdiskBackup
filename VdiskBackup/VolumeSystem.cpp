@@ -174,3 +174,32 @@ std::string VolumeSystem::GetVolumePaths(PWCHAR VolumeName)
     }
     return out_string;
 }
+
+size_t VolumeSystem::GetVolumeFreeSpace(std::string PathInVolume)
+{
+    /// 得到盘符， 例如： "C:\\"
+std::string str_disk_name	= PathInVolume.substr(0, 3);
+DWORD64 qwFreeBytesToCaller = 0;
+DWORD64 qwTotalBytes		= 0;
+DWORD64 qwFreeBytes			= 0;
+
+///使用GetDiskFreeSpaceEx获取磁盘信息并打印结果
+	BOOL bResult				= GetDiskFreeSpaceExA(	str_disk_name.c_str(),
+													(PULARGE_INTEGER)&qwFreeBytesToCaller,
+													(PULARGE_INTEGER)&qwTotalBytes,
+													(PULARGE_INTEGER)&qwFreeBytes) ;
+
+	/// 读取成功
+	if (bResult)
+	{
+        return qwFreeBytesToCaller;		
+		//printf("使用GetDiskFreeSpaceEx获取磁盘空间信息\n");
+		//printf("可获得的空闲空间（字节）: \t%I64d\n", qwFreeBytesToCaller);
+		//printf("空闲空间（字节）: \t\t%I64d\n", qwFreeBytes);
+		//printf("磁盘总容量（字节）: \t\t%I64d\n", qwTotalBytes);
+	}
+	/// 读取失败
+	else
+		return 0;
+
+}

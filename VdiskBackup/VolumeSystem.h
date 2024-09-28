@@ -20,6 +20,7 @@ class VolumeSystem {
 public:
     static vector<VolumeInfo> GetAllVolumeInfo();
     static std::string GetVolumePaths(__in PWCHAR VolumeName);
+    static size_t GetVolumeFreeSpace(std::string PathInVolume);
 };
 
 

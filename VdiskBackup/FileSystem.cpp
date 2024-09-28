@@ -4,18 +4,16 @@
 
 #include "FileSystem.h"
 #include "common_util/inner/filesystem.h"
-#include "indicators.h"
-#include "spdlog/spdlog.h"
+#include <indicators/progress_bar.hpp>
+#include <indicators/cursor_control.hpp>
+#include <spdlog/spdlog.h>
 #include <Windows.h>
 #include <string>
-using namespace indicators;
+#include "md5.hpp"
+#include "utils.h"
 
-LPWSTR charToLPWSTR(const char* charArray) {
-    int size_needed = MultiByteToWideChar(CP_UTF8, 0, charArray, -1, NULL, 0);
-    auto wstrTo = new WCHAR[size_needed];
-    MultiByteToWideChar(CP_UTF8, 0, charArray, -1, wstrTo, size_needed);
-    return wstrTo;
-}
+using namespace indicators;
+using namespace md5;
 
 bool FileSystem::CopyFileWithProgressBar(const cutl::filepath &srcpath, const cutl::filepath &dstpath,
                                          const std::string& prefix_text, const size_t buf_size) {
@@ -54,13 +52,13 @@ bool FileSystem::CopyFileWithProgressBar(const cutl::filepath &srcpath, const cu
         if (total_size_l < 0){
             HANDLE hFile;
             LARGE_INTEGER fr_size;
-            hFile = CreateFile(charToLPWSTR(srcpath.str().c_str()),               // file to open
+            hFile = CreateFileW(charToLPWSTR(srcpath.str().c_str()),               // file to open
                                GENERIC_READ,          // open for reading
                                FILE_SHARE_READ,       // share for reading
-                               NULL,                  // default security
+                               nullptr,                  // default security
                                OPEN_EXISTING,         // existing file only
                                FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, // normal file
-                               NULL);
+                               nullptr);
             if (hFile == INVALID_HANDLE_VALUE){
                 DWORD errCode = GetLastError();
                 SPDLOG_ERROR("get file size fail, get error code:" + std::to_string(errCode));
@@ -84,29 +82,26 @@ bool FileSystem::CopyFileWithProgressBar(const cutl::filepath &srcpath, const cu
         HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
         if (hOut == INVALID_HANDLE_VALUE)
         {
-            SPDLOG_ERROR("get console mode fail, get error code:" + std::to_string(GetLastError()));
-          return false;
+            SPDLOG_WARN("get console mode fail, get error code:" + std::to_string(GetLastError()));
         }
 
         DWORD dwMode = 0;
         if (!GetConsoleMode(hOut, &dwMode))
         {
-            SPDLOG_ERROR("get console mode fail, get error code:" + std::to_string(GetLastError()));
-          return false;
+            SPDLOG_WARN("get console mode fail, get error code:" + std::to_string(GetLastError()));
         }
 
         dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
         if (!SetConsoleMode(hOut, dwMode))
         {
-            SPDLOG_ERROR("set console mode fail, get error code:" + std::to_string(GetLastError()));
-          return false;
+            SPDLOG_WARN("set console mode fail, get error code:" + std::to_string(GetLastError()));
         }
 
         ProgressBar bar{
                 option::BarWidth{50},
                 option::Start{"["},
-                option::Fill{"■"},
-                option::Lead{"■"},
+                option::Fill{"="},
+                option::Lead{"="},
                 option::Remainder{"-"},
                 option::End{" ]"},
                 option::MaxProgress{total_num},
@@ -117,9 +112,13 @@ bool FileSystem::CopyFileWithProgressBar(const cutl::filepath &srcpath, const cu
         if (prefix_text.empty() == 0){
             std::cout << prefix_text << std::endl;
         }
+        md5_state_t md5;
+        md5_init(&md5);
+
         while ((read_size = fread(buffer, 1, buf_size, frd.getfd())) > 0)
         {
             write_size = fwrite(buffer, 1, read_size, fwt.getfd());
+            md5_append(&md5, buffer, read_size);
             if (write_size != read_size)
             {
                 SPDLOG_ERROR("write file failed, only write " +
@@ -143,6 +142,26 @@ bool FileSystem::CopyFileWithProgressBar(const cutl::filepath &srcpath, const cu
             SPDLOG_ERROR("file_sync failed for " + dstpath.str());
             return false;
         }
+        char digest[16];
+        md5_finish(&md5, (md5_byte_t *)digest);
+        std::string hash;
+        hash.resize(16);
+        std::copy(digest,digest+16,hash.begin());
+        std::string hex;
+
+        for (size_t i = 0; i < hash.size(); i++) {
+            hex.push_back(hexval[((hash[i] >> 4) & 0xF)]);
+            hex.push_back(hexval[(hash[i]) & 0x0F]);
+        }
+
+        FILE *fmd;
+        if (fopen_s(&fmd, (dstpath.str()+".md5").c_str(), "w") != 0)
+        {
+            SPDLOG_ERROR("open file failed, " + srcpath.str());
+            return false;
+        }
+        fprintf(fmd,"%s", hex.c_str());
+        fclose(fmd);
     }
     show_console_cursor(true);
     return true;

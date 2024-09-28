@@ -56,10 +56,6 @@ else()
   endif()
 endif()
 
-if(MSVC)
-  add_compile_options("/source-charset:utf-8")
-endif()
-
 project ("VdiskBackup")
 
 # 包含子项目。

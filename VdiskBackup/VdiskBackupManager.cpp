@@ -7,6 +7,9 @@
 #include "common_util/filepath.h"
 #include "yaml-cpp/yaml.h"
 #include "FileSystem.h"
+#include <spdlog/spdlog.h>
+#include <format>
+#include <iostream>
 
 std::string removeSpaces(const std::string& str) {
     std::string result;
@@ -17,7 +20,7 @@ std::string removeSpaces(const std::string& str) {
 }
 
 VdiskBackupManager::VdiskBackupManager() {
-    LOG4CPLUS_INFO(logger, L"VdiskBackupManager initialized");
+    SPDLOG_INFO("VdiskBackupManager initialized");
 }
 
 void VdiskBackupManager::GetAllConfigs() {
@@ -29,7 +32,7 @@ void VdiskBackupManager::GetAllConfigs() {
             cutl::filepath base_path = cutl::filepath(removeSpaces(it->drive_letter));
             cutl::filepath path = base_path.join(VdiskBackupManager::ConfigName);
             if (path.exists()){
-                LOG4CPLUS_INFO(logger, ("get config at " + path.abspath()).c_str());
+                SPDLOG_INFO("get config at " + path.abspath());
                 YAML::Node config = YAML::LoadFile(path.abspath());
                 YAML::Node from = config["from"];
                 if (from && from.IsSequence()){
@@ -85,9 +88,8 @@ void VdiskBackupManager::GetCopySettings() {
         if (from == 1 && to == 1 && fp != nullptr && tp != nullptr){
             copy_settings.emplace_back(*fp, *tp);
         } else {
-            LOG4CPLUS_WARN(logger,
-                           std::format("id: {} get {:d} from and {:d} to, will be ignored.",
-                                       it->first, from, to).c_str());
+            SPDLOG_INFO("id: {} get {:d} from and {:d} to, will be ignored.",
+                it->first, from, to);
             configs.erase(it->first);
         }
     }
@@ -104,10 +106,10 @@ void VdiskBackupManager::DoCopy() {
     }
     for (const auto& i : copy_settings){
         std::string t = std::format("Copying {} -> {} ", i.from_path.str(), i.to_path.str());
-        LOG4CPLUS_INFO(logger, ("Start "+t).c_str());
+        SPDLOG_INFO("Start " + t);
         FileSystem::CopyFileWithProgressBar(
                 i.from_path, i.to_path,
                 t, buf_size);
-        LOG4CPLUS_INFO(logger, ("Finish "+t).c_str());
+        SPDLOG_INFO("Finish " + t);
     }
 }

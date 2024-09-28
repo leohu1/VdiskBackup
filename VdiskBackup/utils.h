@@ -15,6 +15,8 @@ namespace utils{
     LPWSTR charToLPWSTR(const char* charArray);
 
     std::string removeSpaces(const std::string& str);
+
+    char* LPWSTRTochar(LPWSTR pWCStrKey);
 }
 
 #endif //VDISKBACKUP_UTILS_H

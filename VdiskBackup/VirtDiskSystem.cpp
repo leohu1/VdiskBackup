@@ -256,7 +256,7 @@ bool VirtDiskSystem::CompactVdiskFileSystemAgnostic(std::string path){
     return true;
 }
 
-std::vector<std::string> GetVdiskParents(std::string path){
+std::string VirtDiskSystem::GetVdiskParents(std::string path){
     std::wstring w_path(path.begin(), path.end());
     const wchar_t *p_w = w_path.c_str();
     VIRTUAL_STORAGE_TYPE vst;
@@ -271,4 +271,54 @@ std::vector<std::string> GetVdiskParents(std::string path){
     if (result_open != 0){
         SPDLOG_ERROR("Have error opening vhdx file, result %d", result_open);
     }
+    GET_VIRTUAL_DISK_INFO* disk_info;
+    DWORD OutBufferSize = sizeof(GET_VIRTUAL_DISK_INFO);
+    disk_info  = (GET_VIRTUAL_DISK_INFO*) malloc(OutBufferSize);
+    if (disk_info == nullptr){
+        SPDLOG_ERROR("error when malloc memory");
+        return "";
+    }
+    // get disk type
+    disk_info -> Version = GET_VIRTUAL_DISK_INFO_PROVIDER_SUBTYPE;
+
+    if (GetVirtualDiskInformation(handle, &OutBufferSize, disk_info,
+                                  nullptr) == ERROR_BUFFER_OVERFLOW){
+        free(disk_info);
+        disk_info  = (GET_VIRTUAL_DISK_INFO*) malloc(OutBufferSize);
+        if (disk_info == nullptr){
+            SPDLOG_ERROR("error when malloc memory");
+            return "";
+        }
+        disk_info -> Version = GET_VIRTUAL_DISK_INFO_PROVIDER_SUBTYPE;
+        GetVirtualDiskInformation(handle, &OutBufferSize, disk_info, nullptr);
+    }
+    if (disk_info -> ProviderSubtype != 4){
+        return {};
+    }
+    free(disk_info);
+
+    OutBufferSize = sizeof(GET_VIRTUAL_DISK_INFO);
+    disk_info  = (GET_VIRTUAL_DISK_INFO*) malloc(OutBufferSize);
+    if (disk_info == nullptr){
+        SPDLOG_ERROR("error when malloc memory");
+        return "";
+    }
+    // get parent disk
+    disk_info -> Version = GET_VIRTUAL_DISK_INFO_PARENT_LOCATION;
+
+    if (GetVirtualDiskInformation(handle, &OutBufferSize, disk_info,
+                                  nullptr) == ERROR_BUFFER_OVERFLOW){
+        free(disk_info);
+        disk_info  = (GET_VIRTUAL_DISK_INFO*) malloc(OutBufferSize);
+        if (disk_info == nullptr){
+            SPDLOG_ERROR("error when malloc memory");
+            return "";
+        }
+        disk_info -> Version = GET_VIRTUAL_DISK_INFO_PARENT_LOCATION;
+        GetVirtualDiskInformation(handle, &OutBufferSize, disk_info, nullptr);
+    }
+    if (disk_info -> ParentLocation.ParentResolved){
+        return std::string{utils::LPWSTRTochar(disk_info -> ParentLocation.ParentLocationBuffer)};
+    }
+    return "";
 }

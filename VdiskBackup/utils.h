@@ -5,33 +5,16 @@
 #ifndef VDISKBACKUP_UTILS_H
 #define VDISKBACKUP_UTILS_H
 #include <Windows.h>
+#include "algorithm"
+#include <iterator>
+#include <string>
 
-LPCTSTR ErrorMessage( DWORD error )
+namespace utils{
+    LPCTSTR ErrorMessage( DWORD error );
 
-// Routine Description:
-//      Retrieve the system error message for the last-error code
-{
+    LPWSTR charToLPWSTR(const char* charArray);
 
-    LPVOID lpMsgBuf;
-
-    FormatMessage(
-            FORMAT_MESSAGE_ALLOCATE_BUFFER |
-            FORMAT_MESSAGE_FROM_SYSTEM |
-            FORMAT_MESSAGE_IGNORE_INSERTS,
-            nullptr,
-            error,
-            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-            (LPTSTR) &lpMsgBuf,
-            0, nullptr );
-
-    return((LPCTSTR)lpMsgBuf);
-}
-
-LPWSTR charToLPWSTR(const char* charArray) {
-    int size_needed = MultiByteToWideChar(CP_UTF8, 0, charArray, -1, NULL, 0);
-    auto wstrTo = new WCHAR[size_needed];
-    MultiByteToWideChar(CP_UTF8, 0, charArray, -1, wstrTo, size_needed);
-    return wstrTo;
+    std::string removeSpaces(const std::string& str);
 }
 
 #endif //VDISKBACKUP_UTILS_H

@@ -1,10 +1,11 @@
-#include <iostream>
-#include "common_util/common_util.h"
 #include "VdiskBackupManager.h"
-#include <spdlog/spdlog.h>
+#include "VirtDiskSystem.h"
+#include "common_util/common_util.h"
+#include <iostream>
 #include <spdlog/async.h>
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
 
 static std::mutex g_log_mtx_;
 
@@ -55,8 +56,8 @@ int main()
 
     VdiskBackupManager manager;
     manager.GetAllConfigs();
-    manager.GetCopySettings();
-    manager.DoCopy();
+    manager.StartBackup();
+
     spdlog::drop_all();
     return 0;
 }

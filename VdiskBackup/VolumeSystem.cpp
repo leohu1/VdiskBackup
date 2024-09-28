@@ -10,8 +10,8 @@ static std::string WChar2String (WCHAR wchars[]){
     DWORD dwNum = WideCharToMultiByte(
             CP_UTF8,
             NULL,
-            wchars,-1,NULL,
-            0,NULL,FALSE);
+            wchars,-1,nullptr,
+            0,nullptr,FALSE);
     char *psText;
     psText = new char[dwNum];
     WideCharToMultiByte (CP_UTF8,NULL,wchars,-1,

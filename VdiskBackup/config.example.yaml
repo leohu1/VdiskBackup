@@ -1,5 +1,10 @@
-# 本文件应置于磁盘根目录
-from:
-  -
-    id : vdisk.base # 用于标记的ID
-    path : vdisk.base.vhdx # 相对于根目录的文件路径
+# this config must be stored in the base dir of a volume
+
+backups:
+  - id: VdiskA
+    source: path/to/vdisk.vhdx # path of .vhdx, relevant to this config's path
+    destination: path/to/backup/dir # path to place the backup
+    min_compact_size: 5 # the min size to compact a disk, GB
+    copy_buffer_size: 134217728 # the buffer size used for copy, B
+    enable_file_system_aware_compact: True # the first step of compact, most efficient
+    enable_file_system_agnostic_compact: True # the second step of the compact

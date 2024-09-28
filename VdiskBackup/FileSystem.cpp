@@ -7,7 +7,6 @@
 #include <indicators/progress_bar.hpp>
 #include <indicators/cursor_control.hpp>
 #include <spdlog/spdlog.h>
-#include <Windows.h>
 #include <string>
 #include "md5.hpp"
 #include "utils.h"
@@ -45,38 +44,11 @@ bool FileSystem::CopyFileWithProgressBar(const cutl::filepath &srcpath, const cu
         auto* buffer = new uint8_t[buf_size];
         size_t read_size = 0;
         size_t write_size = 0;
-        size_t total_size = 0;
+        size_t total_size = GetFileSize(srcpath.str()).GetSizeBits();
         size_t total_write_size = 0;
-        fseek(fr,0, SEEK_END);
-        long total_size_l = ftell(fr);
-        if (total_size_l < 0){
-            HANDLE hFile;
-            LARGE_INTEGER fr_size;
-            hFile = CreateFileW(charToLPWSTR(srcpath.str().c_str()),               // file to open
-                               GENERIC_READ,          // open for reading
-                               FILE_SHARE_READ,       // share for reading
-                               nullptr,                  // default security
-                               OPEN_EXISTING,         // existing file only
-                               FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, // normal file
-                               nullptr);
-            if (hFile == INVALID_HANDLE_VALUE){
-                DWORD errCode = GetLastError();
-                SPDLOG_ERROR("get file size fail, get error code:" + std::to_string(errCode));
-                return false;
-            }
-            if (GetFileSizeEx(hFile, &fr_size) == 0){
-                DWORD errCode = GetLastError();
-                SPDLOG_ERROR("get file size fail, get error code:" + std::to_string(errCode));
-                return false;
-            }
-            total_size = fr_size.QuadPart;
-        }else{
-            total_size = total_size_l;
-        }
-        fseek(fr,0, SEEK_SET);
         size_t total_num = total_size / buf_size;
         size_t write_num = 0;
-        std::string size_string = BuildSizeString(total_size);
+        std::string size_string = FileSize(total_size).GetSizeString();
 
         // Set output mode to handle virtual terminal sequences
         HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -127,7 +99,7 @@ bool FileSystem::CopyFileWithProgressBar(const cutl::filepath &srcpath, const cu
             }
             write_num += 1;
             total_write_size += write_size;
-            bar.set_option(option::PostfixText{BuildSizeString(total_write_size) + "/" + size_string});
+            bar.set_option(option::PostfixText{FileSize(total_write_size).GetSizeString() + "/" + size_string});
             bar.set_progress(write_num);
         }
         // flush file to disk
@@ -149,9 +121,9 @@ bool FileSystem::CopyFileWithProgressBar(const cutl::filepath &srcpath, const cu
         std::copy(digest,digest+16,hash.begin());
         std::string hex;
 
-        for (size_t i = 0; i < hash.size(); i++) {
-            hex.push_back(hexval[((hash[i] >> 4) & 0xF)]);
-            hex.push_back(hexval[(hash[i]) & 0x0F]);
+        for (char & i : hash) {
+            hex.push_back(hexval[((i >> 4) & 0xF)]);
+            hex.push_back(hexval[i & 0x0F]);
         }
 
         FILE *fmd;
@@ -167,14 +139,47 @@ bool FileSystem::CopyFileWithProgressBar(const cutl::filepath &srcpath, const cu
     return true;
 }
 
-std::string FileSystem::BuildSizeString(size_t size) {
+std::string FileSystem::FileSize::GetSizeString() {
+    size_t size = file_bits;
     const std::string size_string[] = {"B", "KB", "MB", "GB", "TB"};
     for (const auto & i : size_string) {
         size_t num = size % 1024;
         size /= 1024;
-        if (size <= 0){
-            return std::to_string(num) + i + " ";
+        if (size <= 1024){
+            double d_size = ((double) size) + ((double) num / 1024.0);
+            return std::format("{:.2f} {}", d_size, i);
         }
     }
     return "";
+}
+
+FileSystem::FileSize::FileSize(size_t bits):file_bits(bits) {
+
+}
+
+size_t FileSystem::FileSize::GetSizeBits() const {
+    return file_bits;
+}
+
+FileSystem::FileSize FileSystem::GetFileSize(const std::string& path) {
+    HANDLE hFile;
+    LARGE_INTEGER fr_size;
+    hFile = CreateFileW(utils::charToLPWSTR(path.c_str()),               // file to open
+                        GENERIC_READ,          // open for reading
+                        FILE_SHARE_READ,       // share for reading
+                        nullptr,                  // default security
+                        OPEN_EXISTING,         // existing file only
+                        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, // normal file
+                        nullptr);
+    if (hFile == INVALID_HANDLE_VALUE){
+        DWORD errCode = GetLastError();
+        SPDLOG_ERROR("get file size fail, get error code:" + std::to_string(errCode));
+        return false;
+    }
+    if (GetFileSizeEx(hFile, &fr_size) == 0){
+        DWORD errCode = GetLastError();
+        SPDLOG_ERROR("get file size fail, get error code:" + std::to_string(errCode));
+        return false;
+    }
+    return {static_cast<size_t>(fr_size.QuadPart)};
 }

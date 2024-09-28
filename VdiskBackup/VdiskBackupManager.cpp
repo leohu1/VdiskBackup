@@ -3,21 +3,13 @@
 //
 
 #include "VdiskBackupManager.h"
+#include "FileSystem.h"
+#include "VirtDiskSystem.h"
 #include "VolumeSystem.h"
 #include "common_util/filepath.h"
+#include "utils.h"
 #include "yaml-cpp/yaml.h"
-#include "FileSystem.h"
 #include <spdlog/spdlog.h>
-#include <format>
-#include <iostream>
-
-std::string removeSpaces(const std::string& str) {
-    std::string result;
-    std::copy_if(str.begin(), str.end(), std::back_inserter(result), [](char c) {
-        return !std::isspace(c);
-    });
-    return result;
-}
 
 VdiskBackupManager::VdiskBackupManager() {
     SPDLOG_INFO("VdiskBackupManager initialized");
@@ -27,39 +19,46 @@ void VdiskBackupManager::GetAllConfigs() {
     // 获取全部拷贝文件，存储为 VdiskBackupConfig
     std::vector<VolumeInfo> vec = VolumeSystem::GetAllVolumeInfo();
 
-    for (auto it = vec.begin(); it != vec.end(); ++it) {
-        if (!it->drive_letter.empty()){
-            cutl::filepath base_path = cutl::filepath(removeSpaces(it->drive_letter));
+    for (auto & it : vec) {
+        if (!it.drive_letter.empty()){
+            cutl::filepath base_path = cutl::filepath(utils::removeSpaces(it.drive_letter));
             cutl::filepath path = base_path.join(VdiskBackupManager::ConfigName);
             if (path.exists()){
                 SPDLOG_INFO("get config at " + path.abspath());
-                YAML::Node config = YAML::LoadFile(path.abspath());
-                YAML::Node from = config["from"];
-                if (from && from.IsSequence()){
-                    for (auto && i : from) {
-                        if (i["id"] && i["path"]){
-                            cutl::filepath from_path = base_path.join(i["path"].as<std::string>());
-                            configs.insert(make_pair(
-                                    i["id"].as<std::string>(),
-                                            VdiskBackupConfig(From,
-                                                              from_path,
-                                                              i["id"].as<std::string>(),
-                                                              path)));
-                        }
-                    }
-                }
-
-                YAML::Node to = config["to"];
-                if (to && to.IsSequence()){
-                    for (auto && i : to) {
-                        if (i["id"] && i["path"]){
-                            cutl::filepath to_path = base_path.join(i["path"].as<std::string>());
-                            configs.insert(make_pair(
-                                    i["id"].as<std::string>(),
-                                    VdiskBackupConfig(To,
-                                                      to_path,
-                                                      i["id"].as<std::string>(),
-                                                      path)));
+                YAML::Node configs_data = YAML::LoadFile(path.abspath());
+                YAML::Node backups = configs_data["backups"];
+                if (backups && backups.IsSequence()){
+                    for (auto && i : backups) {
+                        if (i["id"]){
+                            auto id = i["id"].as<string>();
+                            VdiskBackupConfig config;
+                            if (backup_configs.contains(id)){
+                                config = backup_configs[id];
+                            }else{
+                                config = VdiskBackupConfig();
+                            }
+                            config.config_paths.push_back(path);
+                            if (i["source"]){
+                                config.source_path = new cutl::filepath(
+                                        base_path.str() + cutl::filepath::separator() + i["source"].as<string>());
+                            }
+                            if (i["destination"]){
+                                config.destination_path = new cutl::filepath(
+                                        base_path.str() + cutl::filepath::separator() + i["destination"].as<string>());
+                            }
+                            if (i["min_compact_size"]){
+                                config.min_compact_size = i["min_compact_size"].as<size_t>() * 1024 * 1024 *1024;
+                            }
+                            if (i["copy_buffer_size"]){
+                                config.buffer_size = i["copy_buffer_size"].as<size_t>();
+                            }
+                            if (i["enable_file_system_aware_compact"]){
+                                config.enable_fs_aware = i["enable_file_system_aware_compact"].as<bool>();
+                            }
+                            if (i["enable_file_system_agnostic_compact"]){
+                                config.enable_fs_agnostic = i["enable_file_system_agnostic_compact"].as<bool>();
+                            }
+                            backup_configs[id] = config;
                         }
                     }
                 }
@@ -68,48 +67,29 @@ void VdiskBackupManager::GetAllConfigs() {
     }
 }
 
-void VdiskBackupManager::GetCopySettings() {
-    for (auto it = configs.begin();it != configs.end();it = configs.upper_bound(it->first)){
-        int from = 0, to = 0;
-        cutl::filepath *fp = nullptr, *tp = nullptr;
-        for (auto range = configs.equal_range(it->first);range.first != range.second;++range.first){
-            // key: it->first, items: range.first->second
-            switch (range.first -> second.type){
-                case From:
-                    fp = &(range.first -> second.path);
-                    ++from;
-                    break;
-                case To:
-                    tp = &(range.first -> second.path);
-                    ++to;
-                    break;
+void VdiskBackupManager::StartBackup() {
+    for (const auto& i : backup_configs){
+        VdiskBackupConfig config = i.second;
+        if (config.source_path->exists() && config.enable_fs_aware){
+            if (FileSystem::GetFileSize(config.source_path->abspath()).GetSizeBits() >= config.min_compact_size){
+                VirtDiskSystem::CompactVdiskFileSystemAware(config.source_path->abspath());
             }
         }
-        if (from == 1 && to == 1 && fp != nullptr && tp != nullptr){
-            copy_settings.emplace_back(*fp, *tp);
-        } else {
-            SPDLOG_INFO("id: {} get {:d} from and {:d} to, will be ignored.",
-                it->first, from, to);
-            configs.erase(it->first);
+        if (config.source_path->exists() && config.enable_fs_agnostic){
+            if (FileSystem::GetFileSize(config.source_path->abspath()).GetSizeBits() >= config.min_compact_size){
+                VirtDiskSystem::CompactVdiskFileSystemAgnostic(config.source_path->abspath());
+            }
         }
     }
 }
 
-void VdiskBackupManager::DoCopy() {
-    size_t buf_size = 8*1024;
-    cutl::filepath cp = cutl::filepath("./CopySettings.yaml");
-    if (cp.exists()){
-        YAML::Node config = YAML::LoadFile(cp.abspath());
-        if (config["buffer_size"]){
-            buf_size = config["buffer_size"].as<size_t >();
-        }
+VdiskBackupConfig::~VdiskBackupConfig() {
+    if (source_path != nullptr){
+        delete source_path;
+        source_path = nullptr;
     }
-    for (const auto& i : copy_settings){
-        std::string t = std::format("Copying {} -> {} ", i.from_path.str(), i.to_path.str());
-        SPDLOG_INFO("Start " + t);
-        FileSystem::CopyFileWithProgressBar(
-                i.from_path, i.to_path,
-                t, buf_size);
-        SPDLOG_INFO("Finish " + t);
+    if (destination_path != nullptr){
+        delete destination_path;
+        destination_path = nullptr;
     }
 }

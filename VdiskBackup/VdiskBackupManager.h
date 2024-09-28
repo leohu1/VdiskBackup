@@ -11,39 +11,27 @@
 #include <utility>
 #include <vector>
 
-enum VdiskBackupConfigType{
-    From,
-    To
-};
-
 struct VdiskBackupConfig{
 public:
-    VdiskBackupConfig(VdiskBackupConfigType t, const cutl::filepath& p, std::string i, const cutl::filepath& c):
-    type(t), path(p), id(std::move(i)), config_path(c){}
-    VdiskBackupConfigType type;
-    cutl::filepath path;
+    cutl::filepath* source_path = nullptr;
+    cutl::filepath* destination_path = nullptr;
     std::string id;
-    cutl::filepath config_path;
-
-};
-
-struct VdiskCopySetting{
-public:
-    VdiskCopySetting(const cutl::filepath& fp, const cutl::filepath& tp): from_path(fp), to_path(tp){}
-    cutl::filepath from_path;
-    cutl::filepath to_path;
+    std::vector<cutl::filepath> config_paths;
+    size_t min_compact_size = 5;
+    size_t buffer_size = 134217728;
+    bool enable_fs_aware;
+    bool enable_fs_agnostic;
+    ~VdiskBackupConfig();
 };
 
 class VdiskBackupManager {
 const std::string ConfigName = "VdiskBackupConfig.yaml";
 private:
-    std::multimap<std::string, VdiskBackupConfig> configs;
-    std::vector<VdiskCopySetting> copy_settings;
+    std::map<std::string, VdiskBackupConfig> backup_configs;
 public:
     VdiskBackupManager();
     void GetAllConfigs();
-    void GetCopySettings();
-    void DoCopy();
+    void StartBackup();
 };
 
 

@@ -8,3 +8,5 @@ backups:
     copy_buffer_size: 134217728 # the buffer size used for copy, B
     enable_file_system_aware_compact: True # the first step of compact, most efficient
     enable_file_system_agnostic_compact: True # the second step of the compact
+    enable_merge: False # merge a disk to its parent so that the next backup will be smaller, this is dangerous, it will break the other vhdx using the same parent
+    min_merge_size: 5 # the min size to merge a disk to its parent, GB

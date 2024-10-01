@@ -1,34 +1,10 @@
 #include "VdiskBackupManager.h"
 #include "VirtDiskSystem.h"
-#include "common_util/common_util.h"
 #include <iostream>
 #include <spdlog/async.h>
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
-
-static std::mutex g_log_mtx_;
-
-void static library_log_func(cutl::loglevel level, const std::string &msg)
-{
-    std::lock_guard<std::mutex> lock(g_log_mtx_);
-    auto curTime = cutl::fmt_timestamp_ms(cutl::timestamp(cutl::timeunit::ms));
-    auto threadId = std::this_thread::get_id();
-    switch (level) {
-        case cutl::loglevel::debug_level:
-            SPDLOG_DEBUG(msg);
-            break;
-        case cutl::loglevel::info_level:
-            SPDLOG_INFO(msg);
-            break;
-        case cutl::loglevel::warn_level:
-            SPDLOG_WARN(msg);
-            break;
-        case cutl::loglevel::error_level:
-            SPDLOG_ERROR(msg);
-            break;
-    }
-}
 
 int main()
 {
@@ -52,13 +28,10 @@ int main()
     spdlog::flush_every(std::chrono::seconds(5));
     spdlog::register_logger(logger);
     spdlog::set_default_logger(logger);
-    cutl::library_init(library_log_func);
 
-//    VdiskBackupManager manager;
-//    manager.GetAllConfigs();
-//    manager.StartBackup();
-
-    VirtDiskSystem::GetVdiskParents("C:\\windows_test.child.vhdx");
+    VdiskBackupManager manager;
+    manager.GetAllConfigs();
+    manager.StartBackup();
 
     spdlog::drop_all();
     return 0;

@@ -3,7 +3,6 @@
 //
 
 #include "FileSystem.h"
-#include "common_util/inner/filesystem.h"
 #include <indicators/progress_bar.hpp>
 #include <indicators/cursor_control.hpp>
 #include <spdlog/spdlog.h>
@@ -14,37 +13,35 @@
 using namespace indicators;
 using namespace md5;
 
-bool FileSystem::CopyFileWithProgressBar(const cutl::filepath &srcpath, const cutl::filepath &dstpath,
+bool FileSystem::CopyFileWithProgressBar(const fs::path &srcPath, const fs::path &dstPath, std::string **pMd5,
                                          const std::string& prefix_text, const size_t buf_size) {
     // Hide cursor
     show_console_cursor(false);
 
-    if (srcpath.isfile())
+    if (fs::exists(srcPath))
     {
-        if (dstpath.exists())
+        if (fs::exists(dstPath))
         {
             // remove if exists
-            removefile(dstpath);
+            fs::remove(dstPath);
         }
         FILE *fr, *fw;
-        if (fopen_s(&fr, srcpath.str().c_str(), "rb") != 0)
+        if (fopen_s(&fr, reinterpret_cast<const char *>(srcPath.c_str()), "rb") != 0)
         {
-            SPDLOG_ERROR("open file failed, " + srcpath.str());
+            SPDLOG_ERROR("open file failed, " + srcPath.string());
             return false;
         }
-        cutl::file_guard frd(fr);
 
-        if (fopen_s(&fw, dstpath.str().c_str(), "wb") != 0)
+        if (fopen_s(&fw, reinterpret_cast<const char *>(dstPath.c_str()), "wb") != 0)
         {
-            SPDLOG_ERROR("open file failed, " + srcpath.str());
+            SPDLOG_ERROR("open file failed, " + srcPath.string());
             return false;
         }
-        cutl::file_guard fwt(fw);
 
         auto* buffer = new uint8_t[buf_size];
         size_t read_size = 0;
         size_t write_size = 0;
-        size_t total_size = GetFileSize(srcpath.str()).GetSizeBits();
+        size_t total_size = GetFileSize(srcPath.string()).GetSizeBits();
         size_t total_write_size = 0;
         size_t total_num = total_size / buf_size;
         size_t write_num = 0;
@@ -87,9 +84,9 @@ bool FileSystem::CopyFileWithProgressBar(const cutl::filepath &srcpath, const cu
         md5_state_t md5;
         md5_init(&md5);
 
-        while ((read_size = fread(buffer, 1, buf_size, frd.getfd())) > 0)
+        while ((read_size = fread(buffer, 1, buf_size, fr)) > 0)
         {
-            write_size = fwrite(buffer, 1, read_size, fwt.getfd());
+            write_size = fwrite(buffer, 1, read_size, fw);
             md5_append(&md5, buffer, read_size);
             if (write_size != read_size)
             {
@@ -103,15 +100,10 @@ bool FileSystem::CopyFileWithProgressBar(const cutl::filepath &srcpath, const cu
             bar.set_progress(write_num);
         }
         // flush file to disk
-        int ret = fflush(fwt.getfd());
+        int ret = fflush(fw);
         if (0 != ret)
         {
-            SPDLOG_ERROR("fail to flush file:" + dstpath.str());
-            return false;
-        }
-        if (!cutl::file_sync(fwt.getfd()))
-        {
-            SPDLOG_ERROR("file_sync failed for " + dstpath.str());
+            SPDLOG_ERROR("fail to flush file:" + dstPath.string());
             return false;
         }
         char digest[16];
@@ -119,24 +111,88 @@ bool FileSystem::CopyFileWithProgressBar(const cutl::filepath &srcpath, const cu
         std::string hash;
         hash.resize(16);
         std::copy(digest,digest+16,hash.begin());
-        std::string hex;
+        *pMd5 = new std::string;
 
         for (char & i : hash) {
-            hex.push_back(hexval[((i >> 4) & 0xF)]);
-            hex.push_back(hexval[i & 0x0F]);
+            (**pMd5).push_back(hexval[((i >> 4) & 0xF)]);
+            (**pMd5).push_back(hexval[i & 0x0F]);
         }
-
-        FILE *fmd;
-        if (fopen_s(&fmd, (dstpath.str()+".md5").c_str(), "w") != 0)
-        {
-            SPDLOG_ERROR("open file failed, " + srcpath.str());
-            return false;
-        }
-        fprintf(fmd,"%s", hex.c_str());
-        fclose(fmd);
     }
     show_console_cursor(true);
     return true;
+}
+
+std::string FileSystem::GetFileMd5(const fs::path &path, const size_t buf_size) {
+    FILE *fr;
+    if (fopen_s(&fr, reinterpret_cast<const char *>(path.c_str()), "rb") != 0)
+    {
+        SPDLOG_ERROR("open file failed, " + path.string());
+        return "";
+    }
+    auto* buffer = new uint8_t[buf_size];
+    size_t read_size = 0;
+    size_t total_size = GetFileSize(path.string()).GetSizeBits();
+    size_t total_write_size = 0;
+    size_t done_num = 0;
+    size_t total_num = total_size / buf_size;
+    std::string size_string = FileSize(total_size).GetSizeString();
+
+    // Set output mode to handle virtual terminal sequences
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (hOut == INVALID_HANDLE_VALUE)
+    {
+        SPDLOG_WARN("get console mode fail, get error code:" + std::to_string(GetLastError()));
+    }
+
+    DWORD dwMode = 0;
+    if (!GetConsoleMode(hOut, &dwMode))
+    {
+        SPDLOG_WARN("get console mode fail, get error code:" + std::to_string(GetLastError()));
+    }
+
+    dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+    if (!SetConsoleMode(hOut, dwMode))
+    {
+        SPDLOG_WARN("set console mode fail, get error code:" + std::to_string(GetLastError()));
+    }
+
+    ProgressBar bar{
+            option::BarWidth{50},
+            option::Start{"["},
+            option::Fill{"="},
+            option::Lead{"="},
+            option::Remainder{"-"},
+            option::End{" ]"},
+            option::MaxProgress{total_num},
+            option::ShowElapsedTime{true},
+            option::ShowRemainingTime{true},
+            option::Stream{std::cout},
+    };
+    std::cout << "Calculating MD5 for" << path.string() << std::endl;
+    md5_state_t md5;
+    md5_init(&md5);
+
+    while ((read_size = fread(buffer, 1, buf_size, fr)) > 0)
+    {
+        md5_append(&md5, buffer, read_size);
+        total_write_size += read_size;
+        done_num += 1;
+        bar.set_option(option::PostfixText{FileSize(total_write_size).GetSizeString() + "/" + size_string});
+        bar.set_progress(done_num);
+    }
+    char digest[16];
+    md5_finish(&md5, (md5_byte_t *)digest);
+    std::string hash;
+    hash.resize(16);
+    std::copy(digest,digest+16,hash.begin());
+    std::string md5_s;
+
+    for (char & i : hash) {
+        md5_s.push_back(hexval[((i >> 4) & 0xF)]);
+        md5_s.push_back(hexval[i & 0x0F]);
+    }
+    show_console_cursor(true);
+    return md5_s;
 }
 
 std::string FileSystem::FileSize::GetSizeString() {

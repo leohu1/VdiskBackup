@@ -1,0 +1,21 @@
+id: vdiskA
+result:
+  - id: fs_aware_compact
+    original_size: 1122
+    result_size: 1122
+  - id: fs_agnostic_compact
+    original_size: 1122
+    result_size: 1122
+  - id: merge_vdisk
+    original_size: 1122
+    result_size: 1122
+    parent_file: parent.vhdx
+    child_file: child.vhdx
+  - id: copy_files
+    files:
+      - path: parent1.vhdx
+        md5: 1983891087894
+      - path: parent.vhdx
+        md5: 1983891087894
+      - path: child.vhdx
+        md5: 1983891087894

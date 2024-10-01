@@ -1,12 +1,14 @@
 #include "VirtDiskSystem.h"
 #include "utils.h"
-#include "indicators.h"
+#include <indicators/progress_bar.hpp>
+#include <indicators/cursor_control.hpp>
 #include <Windows.h>
 #include <Shlwapi.h>
 #include <initguid.h>
 #include <virtdisk.h>
 #include <spdlog/spdlog.h>
 #pragma comment(lib,"VirtDisk.lib")
+using namespace indicators;
 
 bool VirtDiskSystem::CompactVdiskFileSystemAware(std::string path){
     std::wstring w_path(path.begin(), path.end());
@@ -39,92 +41,53 @@ bool VirtDiskSystem::CompactVdiskFileSystemAware(std::string path){
     OVERLAPPED overlap;
     memset(&overlap, 0, sizeof(overlap));
 
-    indicators::IndeterminateProgressBar bar{
-            indicators::option::BarWidth{40},
-            indicators::option::Start{"["},
-            indicators::option::Fill{"·"},
-            indicators::option::Lead{"<==>"},
-            indicators::option::End{"]"},
-            indicators::option::PostfixText{"Checking for Updates"},
-            indicators::option::ForegroundColor{indicators::Color::yellow},
-            indicators::option::FontStyles{
-                    std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}
+    ProgressBar bar{
+            option::BarWidth{50},
+            option::Start{"["},
+            option::Fill{"="},
+            option::Lead{"="},
+            option::Remainder{"-"},
+            option::End{" ]"},
+            option::ShowElapsedTime{true},
+            option::ShowRemainingTime{true},
+            option::Stream{std::cout},
     };
 
     indicators::show_console_cursor(false);
 
     DWORD result_compact = CompactVirtualDisk(handle, COMPACT_VIRTUAL_DISK_FLAG_NONE, &compactParameters, &overlap);
     DWORD dw_error = GetLastError();
-    DWORD dwBytesRead;
-    LPCTSTR errMsg = NULL;
+    VIRTUAL_DISK_PROGRESS virtualDiskProgress = {0};
+    LPCTSTR errMsg = nullptr;
 
     if (!result_compact)
     {
-        switch (dw_error)
-        {
+        if (dw_error == ERROR_IO_PENDING){
+            BOOL bPending=TRUE;
+            DWORD get_progress_result;
 
-            case ERROR_HANDLE_EOF:
+            // Loop until the I/O is complete, that is: the overlapped
+            // event is signaled.
+
+            while( bPending )
             {
-                break;
-            }
-            case ERROR_IO_PENDING:
-            {
-                BOOL bPending=TRUE;
-
-                // Loop until the I/O is complete, that is: the overlapped
-                // event is signaled.
-
-                while( bPending )
-                {
-                    bPending = FALSE;
-
-                    // Do something else then come back to check.
-                    Sleep(100);
-                    bar.tick();
-
-                    // Check the result of the asynchronous read
-                    // without waiting (forth parameter FALSE).
-                    result_compact = GetOverlappedResult(handle,
-                                                  &overlap,
-                                                  &dwBytesRead,
-                                                  FALSE) ;
-
-                    if (!result_compact)
-                    {
-                        switch (dw_error = GetLastError())
-                        {
-                            case ERROR_IO_INCOMPLETE:
-                            {
-                                bPending = TRUE;
-                                break;
-                            }
-
-                            default:
-                            {
-                                // Decode any other errors codes.
-                                errMsg = utils::ErrorMessage(dw_error);
-                                SPDLOG_ERROR(TEXT("GetOverlappedResult failed ({}): {}"),
-                                         dw_error, errMsg);
-                                LocalFree((LPVOID)errMsg);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        SPDLOG_INFO("File System Aware Compact done.");
-                    }
+                get_progress_result = GetVirtualDiskOperationProgress(handle, &overlap, &virtualDiskProgress);
+                if (get_progress_result != ERROR_SUCCESS){
+                    errMsg = utils::ErrorMessage(dw_error);
+                    SPDLOG_ERROR("Get Error (%d): %s\n", dw_error, errMsg);
+                    LocalFree((LPVOID)errMsg);
                 }
-                break;
+                if(virtualDiskProgress.OperationStatus != ERROR_IO_PENDING){
+                    bPending = FALSE;
+                }
+                bar.set_option(option::MaxProgress{virtualDiskProgress.CompletionValue});
+                bar.set_progress(virtualDiskProgress.CurrentValue);
+                Sleep(100);
             }
-
-            default:
-            {
-                // Decode any other errors codes.
-                errMsg = utils::ErrorMessage(dw_error);
-                SPDLOG_ERROR("GLE unhandled ({}): {}", dw_error, errMsg);
-                LocalFree((LPVOID)errMsg);
-                break;
-            }
+        }else{
+            errMsg = utils::ErrorMessage(dw_error);
+            SPDLOG_ERROR("Get Error (%d): %s\n", dw_error, errMsg);
+            LocalFree((LPVOID)errMsg);
         }
     }
     DWORD result_detach = DetachVirtualDisk(handle, DETACH_VIRTUAL_DISK_FLAG_NONE, 0);
@@ -157,98 +120,54 @@ bool VirtDiskSystem::CompactVdiskFileSystemAgnostic(std::string path){
     OVERLAPPED overlap;
     memset(&overlap, 0, sizeof(overlap));
 
-    indicators::IndeterminateProgressBar bar{
-            indicators::option::BarWidth{40},
-            indicators::option::Start{"["},
-            indicators::option::Fill{"·"},
-            indicators::option::Lead{"<==>"},
-            indicators::option::End{"]"},
-            indicators::option::PostfixText{"Checking for Updates"},
-            indicators::option::ForegroundColor{indicators::Color::yellow},
-            indicators::option::FontStyles{
-                    std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}
+    ProgressBar bar{
+            option::BarWidth{50},
+            option::Start{"["},
+            option::Fill{"="},
+            option::Lead{"="},
+            option::Remainder{"-"},
+            option::End{" ]"},
+            option::ShowElapsedTime{true},
+            option::ShowRemainingTime{true},
+            option::Stream{std::cout},
     };
 
     indicators::show_console_cursor(false);
 
     DWORD result_compact = CompactVirtualDisk(handle, COMPACT_VIRTUAL_DISK_FLAG_NONE, &compactParameters, &overlap);
     DWORD dw_error = GetLastError();
-    DWORD dwBytesRead;
-    LPCTSTR errMsg = NULL;
+    VIRTUAL_DISK_PROGRESS virtualDiskProgress = {0};
+    LPCTSTR errMsg = nullptr;
 
     if (!result_compact)
     {
-        switch (dw_error)
-        {
+        if (dw_error == ERROR_IO_PENDING){
+            BOOL bPending=TRUE;
+            DWORD get_progress_result;
 
-            case ERROR_HANDLE_EOF:
+            // Loop until the I/O is complete, that is: the overlapped
+            // event is signaled.
+
+            while( bPending )
             {
-                break;
-            }
-            case ERROR_IO_PENDING:
-            {
-                BOOL bPending=TRUE;
-
-                // Loop until the I/O is complete, that is: the overlapped
-                // event is signaled.
-
-                while( bPending )
-                {
-                    bPending = FALSE;
-
-                    // Do something else then come back to check.
-                    Sleep(100);
-
-                    bar.tick();
-
-                    // Check the result of the asynchronous read
-                    // without waiting (forth parameter FALSE).
-                    result_compact = GetOverlappedResult(handle,
-                                                         &overlap,
-                                                         &dwBytesRead,
-                                                         FALSE) ;
-
-                    if (!result_compact)
-                    {
-                        switch (dw_error = GetLastError())
-                        {
-                            case ERROR_IO_INCOMPLETE:
-                            {
-                                bPending = TRUE;
-                                break;
-                            }
-
-                            default:
-                            {
-                                // Decode any other errors codes.
-                                errMsg = utils::ErrorMessage(dw_error);
-                                SPDLOG_ERROR(TEXT("GetOverlappedResult failed (%d): %s\n"),
-                                             dw_error, errMsg);
-                                LocalFree((LPVOID)errMsg);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        printf("ReadFile operation completed\n");
-                    }
+                get_progress_result = GetVirtualDiskOperationProgress(handle, &overlap, &virtualDiskProgress);
+                if (get_progress_result != ERROR_SUCCESS){
+                    errMsg = utils::ErrorMessage(dw_error);
+                    SPDLOG_ERROR("Get Error (%d): %s\n", dw_error, errMsg);
+                    LocalFree((LPVOID)errMsg);
                 }
-                break;
+                if(virtualDiskProgress.OperationStatus != ERROR_IO_PENDING){
+                    bPending = FALSE;
+                }
+                bar.set_option(option::MaxProgress{virtualDiskProgress.CompletionValue});
+                bar.set_progress(virtualDiskProgress.CurrentValue);
+                Sleep(100);
             }
-
-            default:
-            {
-                // Decode any other errors codes.
-                errMsg = utils::ErrorMessage(dw_error);
-                SPDLOG_ERROR("ReadFile GLE unhandled (%d): %s\n", dw_error, errMsg);
-                LocalFree((LPVOID)errMsg);
-                break;
-            }
+        }else{
+            errMsg = utils::ErrorMessage(dw_error);
+            SPDLOG_ERROR("Get Error (%d): %s\n", dw_error, errMsg);
+            LocalFree((LPVOID)errMsg);
         }
-    }
-    DWORD result_detach = DetachVirtualDisk(handle, DETACH_VIRTUAL_DISK_FLAG_NONE, 0);
-    if (result_detach != 0){
-        SPDLOG_ERROR("Have error detaching vhdx file, result %d", result_open);
     }
     CloseHandle(handle);
 
@@ -256,7 +175,7 @@ bool VirtDiskSystem::CompactVdiskFileSystemAgnostic(std::string path){
     return true;
 }
 
-std::string VirtDiskSystem::GetVdiskParents(std::string path){
+std::string VirtDiskSystem::GetVdiskParent(std::string path){
     std::wstring w_path(path.begin(), path.end());
     const wchar_t *p_w = w_path.c_str();
     VIRTUAL_STORAGE_TYPE vst;
@@ -264,9 +183,10 @@ std::string VirtDiskSystem::GetVdiskParents(std::string path){
     vst.VendorId = VIRTUAL_STORAGE_TYPE_VENDOR_MICROSOFT;
     void *handle;
     OPEN_VIRTUAL_DISK_PARAMETERS OpenParameters;
-    OpenParameters.Version = OPEN_VIRTUAL_DISK_VERSION_1;
+    OpenParameters.Version = OPEN_VIRTUAL_DISK_VERSION_2;
+    OpenParameters.Version2.GetInfoOnly = TRUE;
     DWORD result_open = OpenVirtualDisk(&vst, p_w,
-                                        VIRTUAL_DISK_ACCESS_METAOPS,
+                                        VIRTUAL_DISK_ACCESS_NONE,
                                         OPEN_VIRTUAL_DISK_FLAG_NONE,&OpenParameters, &handle);
     if (result_open != 0){
         SPDLOG_ERROR("Have error opening vhdx file, result %d", result_open);
@@ -281,19 +201,8 @@ std::string VirtDiskSystem::GetVdiskParents(std::string path){
     }
     // get disk type
     disk_info -> Version = GET_VIRTUAL_DISK_INFO_PROVIDER_SUBTYPE;
-    DWORD result;
-
-    if ((result = GetVirtualDiskInformation(handle, &OutBufferSize, disk_info,
-                                  nullptr)) == ERROR_BUFFER_OVERFLOW){
-        free(disk_info);
-        disk_info  = (GET_VIRTUAL_DISK_INFO*) malloc(OutBufferSize);
-        if (disk_info == nullptr){
-            SPDLOG_ERROR("error when malloc memory");
-            return "";
-        }
-        disk_info -> Version = GET_VIRTUAL_DISK_INFO_PROVIDER_SUBTYPE;
-        GetVirtualDiskInformation(handle, &OutBufferSize, disk_info, nullptr);
-    }
+    GetVirtualDiskInformation(handle, &OutBufferSize, disk_info,
+                              nullptr);
     if (disk_info -> ProviderSubtype != 4){
         return {};
     }
@@ -308,8 +217,9 @@ std::string VirtDiskSystem::GetVdiskParents(std::string path){
     // get parent disk
     disk_info -> Version = GET_VIRTUAL_DISK_INFO_PARENT_LOCATION;
 
-    if (GetVirtualDiskInformation(handle, &OutBufferSize, disk_info,
-                                  nullptr) == ERROR_BUFFER_OVERFLOW){
+    DWORD result = GetVirtualDiskInformation(handle, &OutBufferSize, disk_info,
+                                             nullptr);
+    if (result == ERROR_INSUFFICIENT_BUFFER){
         free(disk_info);
         disk_info  = (GET_VIRTUAL_DISK_INFO*) malloc(OutBufferSize);
         if (disk_info == nullptr){
@@ -323,4 +233,108 @@ std::string VirtDiskSystem::GetVdiskParents(std::string path){
         return std::string{utils::LPWSTRTochar(disk_info -> ParentLocation.ParentLocationBuffer)};
     }
     return "";
+}
+
+std::vector<std::string> VirtDiskSystem::GetVdiskParents(const std::string& path){
+    std::deque<std::string> out;
+    out.push_back(path);
+    for (std::deque<std::string>::size_type i = 0;i<out.size();++i){
+        std::string p = GetVdiskParent(out[i]);
+        if (!p.empty()){
+            out.push_back(p);
+        }
+    }
+    out.pop_front();
+    return std::vector<std::string>{out.begin(), out.end()};
+}
+
+bool VirtDiskSystem::MergeVdiskToParent(std::string path){
+    std::wstring w_path(path.begin(), path.end());
+    const wchar_t *p_w = w_path.c_str();
+    VIRTUAL_STORAGE_TYPE vst;
+    vst.DeviceId = VIRTUAL_STORAGE_TYPE_DEVICE_VHDX;
+    vst.VendorId = VIRTUAL_STORAGE_TYPE_VENDOR_MICROSOFT;
+    void *handle;
+    OPEN_VIRTUAL_DISK_PARAMETERS OpenParameters;
+    OpenParameters.Version = OPEN_VIRTUAL_DISK_VERSION_1;
+    OpenParameters.Version1.RWDepth = 1;
+    DWORD result_open = OpenVirtualDisk(&vst, p_w,
+                                        VIRTUAL_DISK_ACCESS_ALL,
+                                        OPEN_VIRTUAL_DISK_FLAG_NONE,&OpenParameters, &handle);
+    if (result_open != 0){
+        SPDLOG_ERROR("Have error opening vhdx file, result %d", result_open);
+        return FALSE;
+    }
+    GET_VIRTUAL_DISK_INFO* disk_info;
+    DWORD OutBufferSize = sizeof(GET_VIRTUAL_DISK_INFO);
+    disk_info  = (GET_VIRTUAL_DISK_INFO*) malloc(OutBufferSize);
+    if (disk_info == nullptr){
+        SPDLOG_ERROR("error when malloc memory");
+        return FALSE;
+    }
+    // get disk type
+    disk_info -> Version = GET_VIRTUAL_DISK_INFO_PROVIDER_SUBTYPE;
+    GetVirtualDiskInformation(handle, &OutBufferSize, disk_info,
+                              nullptr);
+    if (disk_info -> ProviderSubtype != 4){
+        return FALSE;
+    }
+    free(disk_info);
+    MERGE_VIRTUAL_DISK_PARAMETERS mergeParameters;
+    mergeParameters.Version = MERGE_VIRTUAL_DISK_VERSION_1;
+    mergeParameters.Version1.MergeDepth = 1;
+
+    OVERLAPPED overlap;
+    memset(&overlap, 0, sizeof(overlap));
+    DWORD result_merge = MergeVirtualDisk(handle, MERGE_VIRTUAL_DISK_FLAG_NONE, &mergeParameters, &overlap);
+
+    DWORD dw_error = GetLastError();
+    VIRTUAL_DISK_PROGRESS virtualDiskProgress = {0};
+    LPCTSTR errMsg = nullptr;
+
+    ProgressBar bar{
+            option::BarWidth{50},
+            option::Start{"["},
+            option::Fill{"="},
+            option::Lead{"="},
+            option::Remainder{"-"},
+            option::End{" ]"},
+            option::ShowElapsedTime{true},
+            option::ShowRemainingTime{true},
+            option::Stream{std::cout},
+    };
+
+    if (!result_merge)
+    {
+        if (dw_error == ERROR_IO_PENDING){
+            BOOL bPending=TRUE;
+            DWORD get_progress_result;
+
+            // Loop until the I/O is complete, that is: the overlapped
+            // event is signaled.
+
+            while( bPending )
+            {
+                get_progress_result = GetVirtualDiskOperationProgress(handle, &overlap, &virtualDiskProgress);
+                if (get_progress_result != ERROR_SUCCESS){
+                    errMsg = utils::ErrorMessage(dw_error);
+                    SPDLOG_ERROR("Get Error (%d): %s\n", dw_error, errMsg);
+                    LocalFree((LPVOID)errMsg);
+                }
+                if(virtualDiskProgress.OperationStatus != ERROR_IO_PENDING){
+                    bPending = FALSE;
+                }
+                bar.set_option(option::MaxProgress{virtualDiskProgress.CompletionValue});
+                bar.set_progress(virtualDiskProgress.CurrentValue);
+                Sleep(100);
+            }
+        }else{
+            errMsg = utils::ErrorMessage(dw_error);
+            SPDLOG_ERROR("Get Error (%d): %s\n", dw_error, errMsg);
+            LocalFree((LPVOID)errMsg);
+        }
+    }
+
+    CloseHandle(handle);
+
 }

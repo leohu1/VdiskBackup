@@ -22,15 +22,12 @@ add_executable(${PROJECT_NAME} main.cpp
         VirtDiskSystem.h
         VirtDiskSystem.cpp
         md5.hpp
-        indicators.h
         utils.h
         utils.cpp
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-add_subdirectory(common_util)
-
-target_link_libraries(${PROJECT_NAME} PRIVATE common_util yaml-cpp::yaml-cpp)
+target_link_libraries(${PROJECT_NAME} PRIVATE yaml-cpp::yaml-cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog_header_only)
 target_link_libraries(${PROJECT_NAME} PRIVATE indicators::indicators)

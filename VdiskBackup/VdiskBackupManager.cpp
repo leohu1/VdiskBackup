@@ -23,7 +23,7 @@ void VdiskBackupManager::GetAllConfigs() {
     for (auto & it : vec) {
         if (!it.drive_letter.empty()){
             fs::path base_path = utils::removeSpaces(it.drive_letter) + "\\";
-            fs::path path = (base_path).concat(VdiskBackupManager::ConfigName);
+            fs::path path = base_path / VdiskBackupManager::ConfigName;
             if (fs::exists(path)){
                 SPDLOG_INFO("get config at " + fs::absolute(path).string());
                 YAML::Node configs_data = YAML::LoadFile(fs::absolute(path).string());
@@ -41,10 +41,10 @@ void VdiskBackupManager::GetAllConfigs() {
                             config.id = id;
                             config.config_paths.push_back(path);
                             if (i["source"]){
-                                config.source_path = fs::absolute(base_path.append(i["source"].as<string>()));
+                                config.source_path = fs::absolute(base_path / i["source"].as<string>());
                             }
                             if (i["destination"]){
-                                config.destination_path = fs::absolute(base_path.append(i["destination"].as<string>()));
+                                config.destination_path = fs::absolute(base_path / i["destination"].as<string>());
                             }
                             if (i["min_compact_size"]){
                                 config.min_compact_size = i["min_compact_size"].as<size_t>() * 1024 * 1024 *1024;
@@ -80,7 +80,7 @@ void VdiskBackupManager::StartBackup() {
             std::map<fs::path, std::string> md5_map;
             fs::create_directories(config.destination_path);
             for (const auto& k : VdiskBackupManager::GetLastMd5(config.destination_path)){
-                fs::path p = config.destination_path.append(k.first);
+                fs::path p = config.destination_path / k.first;
                 if(fs::exists(p)){
                     md5_map.insert(make_pair(absolute(p), k.second));
                 }
@@ -93,28 +93,28 @@ void VdiskBackupManager::StartBackup() {
                 FileSize original_file_size = FileSystem::GetFileSize(config.source_path.string());
                 if (original_file_size.GetSizeBits() >= config.min_compact_size){
                     VirtDiskSystem::CompactVdiskFileSystemAware(config.source_path.string());
-                }
-                out << YAML::BeginMap;
-                out << YAML::Key << "id" << YAML::Value << "fs_aware_compact";
-                out << YAML::Key << "original_size" << YAML::Value << original_file_size.GetSizeBits();
-                out << YAML::Key << "result_size" << YAML::Value << FileSystem::GetFileSize(config.source_path.string()).GetSizeBits();
-                out << YAML::EndMap;
-                if (md5_map.contains(config.source_path)){
-                    md5_map.erase(config.source_path);
+                    out << YAML::BeginMap;
+                    out << YAML::Key << "id" << YAML::Value << "fs_aware_compact";
+                    out << YAML::Key << "original_size" << YAML::Value << original_file_size.GetSizeBits();
+                    out << YAML::Key << "result_size" << YAML::Value << FileSystem::GetFileSize(config.source_path.string()).GetSizeBits();
+                    out << YAML::EndMap;
+                    if (md5_map.contains(config.source_path)){
+                        md5_map.erase(config.source_path);
+                    }
                 }
             }
             if (config.enable_fs_agnostic){
                 FileSize original_file_size = FileSystem::GetFileSize(config.source_path.string());
                 if (original_file_size.GetSizeBits() >= config.min_compact_size){
                     VirtDiskSystem::CompactVdiskFileSystemAgnostic(config.source_path.string());
-                }
-                out << YAML::BeginMap;
-                out << YAML::Key << "id" << YAML::Value << "fs_agnostic_compact";
-                out << YAML::Key << "original_size" << YAML::Value << original_file_size.GetSizeBits();
-                out << YAML::Key << "result_size" << YAML::Value << FileSystem::GetFileSize(config.source_path.string()).GetSizeBits();
-                out << YAML::EndMap;
-                if (md5_map.contains(config.source_path)){
-                    md5_map.erase(config.source_path);
+                    out << YAML::BeginMap;
+                    out << YAML::Key << "id" << YAML::Value << "fs_agnostic_compact";
+                    out << YAML::Key << "original_size" << YAML::Value << original_file_size.GetSizeBits();
+                    out << YAML::Key << "result_size" << YAML::Value << FileSystem::GetFileSize(config.source_path.string()).GetSizeBits();
+                    out << YAML::EndMap;
+                    if (md5_map.contains(config.source_path)){
+                        md5_map.erase(config.source_path);
+                    }
                 }
             }
             if (config.enable_merge){
@@ -144,14 +144,17 @@ void VdiskBackupManager::StartBackup() {
                     }
                 }
             }
+            // vector with path of file to copy
             std::vector<fs::path> copy_files;
-            copy_files.push_back(config.destination_path.append(config.source_path.filename().string()));
-            for (const auto& j : VirtDiskSystem::GetVdiskParents(copy_files[0].string())){
+            copy_files.emplace_back(config.source_path);
+            for (fs::path j : VirtDiskSystem::GetVdiskParents(config.source_path.string())){
                 copy_files.emplace_back(j);
             }
             for (const auto& j : std::map<fs::path, string>(md5_map)){
                 std::vector<fs::path>::iterator it;
-                if ((it = std::find(copy_files.begin(), copy_files.end(), j.first)) != copy_files.end()) {
+                if ((it = std::find_if(copy_files.begin(), copy_files.end(), [j](const fs::path& p){
+                         return p.filename() == j.first;
+                     })) != copy_files.end()) {
                     if (GetFileMd5(j.first) == j.second){
                         md5_map.erase(j.first);
                         copy_files.erase(it);
@@ -164,29 +167,34 @@ void VdiskBackupManager::StartBackup() {
             out << YAML::BeginSeq;
 
             for (const auto& o : copy_files){
+                fs::path dest_path = config.destination_path / o.filename();
                 std::string *md5;
-                FileSystem::CopyFileWithProgressBar(config.source_path,
-                                                    o,
-                                                    &md5,
-                                                    std::format("Backup {} -> {}", config.source_path.string(), o.string()),
-                                                    config.buffer_size);
+                if (!FileSystem::CopyFileWithProgressBar(o,
+                                                        dest_path,
+                                                        &md5,
+                                                        std::format("Backup {} -> {}", o.string(), dest_path.string()),
+                                                        config.buffer_size)){
+                    SPDLOG_ERROR("backup {} failed", config.source_path.string());
+                    continue;
+                }
                 out << YAML::BeginMap;
-                out << YAML::Key << "path" << YAML::Value << fs::relative(o, config.destination_path).string();
+                out << YAML::Key << "path" << YAML::Value << fs::relative(dest_path, config.destination_path).string();
                 out << YAML::Key << "md5" << YAML::Value << *md5;
+                out << YAML::EndMap;
             }
             out << YAML::EndSeq;
 
             out << YAML::EndMap;
             out << YAML::EndSeq;
             out << YAML::EndMap;
-            std::ofstream f_result(config.destination_path.append(VdiskBackupManager::BackupResult));
+            std::ofstream f_result((config.destination_path / VdiskBackupManager::BackupResult).string());
             f_result << out.c_str();
             f_result.close();
         }
     }
 }
 std::map<std::string, std::string> VdiskBackupManager::GetLastMd5(fs::path path) {
-    path = path.append(VdiskBackupManager::BackupResult);
+    path = path / VdiskBackupManager::BackupResult;
     std::map<std::string, std::string> out;
     if (fs::exists(path)){
         YAML::Node config = YAML::LoadFile(path.string());
@@ -211,6 +219,16 @@ std::map<std::string, std::string> VdiskBackupManager::GetLastMd5(fs::path path)
         }
     }
     return out;
+}
+void VdiskBackupManager::CleanUp() {
+    SPDLOG_INFO("Cleaning up configs");
+    for (const auto& i : backup_configs){
+        for (const auto& j : i.second.config_paths){
+            if (fs::exists(j)){
+                fs::remove(j);
+            }
+        }
+    }
 }
 
 VdiskBackupConfig::~VdiskBackupConfig() = default;

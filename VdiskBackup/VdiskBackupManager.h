@@ -39,6 +39,7 @@ public:
     VdiskBackupManager();
     void GetAllConfigs();
     void StartBackup();
+    void CleanUp();
 private:
     std::map<std::string, std::string> GetLastMd5(fs::path path);
 };

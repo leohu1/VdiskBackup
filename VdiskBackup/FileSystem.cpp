@@ -3,12 +3,15 @@
 //
 
 #include "FileSystem.h"
-#include <indicators/progress_bar.hpp>
+#include "indicators/progress_bar.hpp"
+#include "md5.hpp"
+#include "utils.h"
+#include <thread>
+#include <future>
+#include <indicators/block_progress_bar.hpp>
 #include <indicators/cursor_control.hpp>
 #include <spdlog/spdlog.h>
 #include <string>
-#include "md5.hpp"
-#include "utils.h"
 
 using namespace indicators;
 using namespace md5;
@@ -26,15 +29,16 @@ bool FileSystem::CopyFileWithProgressBar(const fs::path &srcPath, const fs::path
             fs::remove(dstPath);
         }
         FILE *fr, *fw;
-        if (fopen_s(&fr, reinterpret_cast<const char *>(srcPath.c_str()), "rb") != 0)
+        DWORD result;
+        if ((result = fopen_s(&fr, srcPath.string().c_str(), "rb")) != 0)
         {
-            SPDLOG_ERROR("open file failed, " + srcPath.string());
+            SPDLOG_ERROR("open file failed ({}), {}", result, srcPath.string());
             return false;
         }
 
-        if (fopen_s(&fw, reinterpret_cast<const char *>(dstPath.c_str()), "wb") != 0)
+        if ((result = fopen_s(&fw, dstPath.string().c_str(), "wb")) != 0)
         {
-            SPDLOG_ERROR("open file failed, " + srcPath.string());
+            SPDLOG_ERROR("open file failed ({}), {}", result, srcPath.string());
             return false;
         }
 
@@ -42,7 +46,6 @@ bool FileSystem::CopyFileWithProgressBar(const fs::path &srcPath, const fs::path
         size_t read_size = 0;
         size_t write_size = 0;
         size_t total_size = GetFileSize(srcPath.string()).GetSizeBits();
-        size_t total_write_size = 0;
         size_t total_num = total_size / buf_size;
         size_t write_num = 0;
         std::string size_string = FileSize(total_size).GetSizeString();
@@ -72,7 +75,7 @@ bool FileSystem::CopyFileWithProgressBar(const fs::path &srcPath, const fs::path
                 option::Fill{"="},
                 option::Lead{"="},
                 option::Remainder{"-"},
-                option::End{" ]"},
+                option::End{"]"},
                 option::MaxProgress{total_num},
                 option::ShowElapsedTime{true},
                 option::ShowRemainingTime{true},
@@ -86,8 +89,10 @@ bool FileSystem::CopyFileWithProgressBar(const fs::path &srcPath, const fs::path
 
         while ((read_size = fread(buffer, 1, buf_size, fr)) > 0)
         {
+            std::future<void> md5_async = std::async(std::launch::async,[&buffer, &md5, read_size](){
+                md5_append(&md5, buffer, read_size);
+            });
             write_size = fwrite(buffer, 1, read_size, fw);
-            md5_append(&md5, buffer, read_size);
             if (write_size != read_size)
             {
                 SPDLOG_ERROR("write file failed, only write " +
@@ -95,9 +100,8 @@ bool FileSystem::CopyFileWithProgressBar(const fs::path &srcPath, const fs::path
                 return false;
             }
             write_num += 1;
-            total_write_size += write_size;
-            bar.set_option(option::PostfixText{FileSize(total_write_size).GetSizeString() + "/" + size_string});
             bar.set_progress(write_num);
+            md5_async.wait();
         }
         // flush file to disk
         int ret = fflush(fw);
@@ -106,6 +110,8 @@ bool FileSystem::CopyFileWithProgressBar(const fs::path &srcPath, const fs::path
             SPDLOG_ERROR("fail to flush file:" + dstPath.string());
             return false;
         }
+        fclose(fw);
+        fclose(fr);
         char digest[16];
         md5_finish(&md5, (md5_byte_t *)digest);
         std::string hash;
@@ -162,7 +168,7 @@ std::string FileSystem::GetFileMd5(const fs::path &path, const size_t buf_size) 
             option::Fill{"="},
             option::Lead{"="},
             option::Remainder{"-"},
-            option::End{" ]"},
+            option::End{"]"},
             option::MaxProgress{total_num},
             option::ShowElapsedTime{true},
             option::ShowRemainingTime{true},
@@ -180,6 +186,7 @@ std::string FileSystem::GetFileMd5(const fs::path &path, const size_t buf_size) 
         bar.set_option(option::PostfixText{FileSize(total_write_size).GetSizeString() + "/" + size_string});
         bar.set_progress(done_num);
     }
+    fclose(fr);
     char digest[16];
     md5_finish(&md5, (md5_byte_t *)digest);
     std::string hash;
@@ -195,16 +202,16 @@ std::string FileSystem::GetFileMd5(const fs::path &path, const size_t buf_size) 
     return md5_s;
 }
 
-std::string FileSystem::FileSize::GetSizeString() {
+std::string FileSystem::FileSize::GetSizeString() const {
     size_t size = file_bits;
     const std::string size_string[] = {"B", "KB", "MB", "GB", "TB"};
     for (const auto & i : size_string) {
         size_t num = size % 1024;
-        size /= 1024;
         if (size <= 1024){
             double d_size = ((double) size) + ((double) num / 1024.0);
             return std::format("{:.2f} {}", d_size, i);
         }
+        size /= 1024;
     }
     return "";
 }
@@ -230,12 +237,149 @@ FileSystem::FileSize FileSystem::GetFileSize(const std::string& path) {
     if (hFile == INVALID_HANDLE_VALUE){
         DWORD errCode = GetLastError();
         SPDLOG_ERROR("get file size fail, get error code:" + std::to_string(errCode));
-        return false;
+        return 0;
     }
     if (GetFileSizeEx(hFile, &fr_size) == 0){
         DWORD errCode = GetLastError();
         SPDLOG_ERROR("get file size fail, get error code:" + std::to_string(errCode));
-        return false;
+        CloseHandle(hFile);
+        return 0;
     }
+    CloseHandle(hFile);
     return {static_cast<size_t>(fr_size.QuadPart)};
+}
+
+void FileSystem::PoolFileCopy::copyFileThreadFunc(void *arg)  {
+    auto *para = (FileSystem::PoolFileCopy::copyThreadPara*)arg;
+    HANDLE hSrc = CreateFile(
+            para->srcFile.c_str(),
+            GENERIC_READ,
+            FILE_SHARE_READ,
+            nullptr,
+            OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL,
+            nullptr
+    );
+
+    if (hSrc == INVALID_HANDLE_VALUE) {
+        return;
+    }
+    HANDLE hDst = CreateFile(
+            para->destFile.c_str(),
+            GENERIC_WRITE,
+            FILE_SHARE_WRITE,
+            nullptr,
+            OPEN_ALWAYS,
+            FILE_ATTRIBUTE_NORMAL,
+            nullptr
+    );
+
+    if (hDst == INVALID_HANDLE_VALUE) {
+        return;
+    }
+
+    auto* buffer = new char[para->poolFileCopy->bufferSize];
+    size_t offset = para->start * para->poolFileCopy->bufferSize;
+    OVERLAPPED *src_overlapped, *dest_overlapped;
+    src_overlapped = (OVERLAPPED*) malloc(sizeof(OVERLAPPED));
+    dest_overlapped = (OVERLAPPED*) malloc(sizeof(OVERLAPPED));
+    memset(src_overlapped, 0, sizeof(OVERLAPPED));
+    memset(dest_overlapped, 0, sizeof(OVERLAPPED));
+    src_overlapped->Offset = offset;
+    dest_overlapped->Offset = offset;
+    LARGE_INTEGER place;
+    place.QuadPart = offset;
+    SetFilePointerEx(hSrc, place, nullptr, FILE_BEGIN);
+    SetFilePointerEx(hDst, place, nullptr, FILE_BEGIN);
+
+    for (size_t i = 0;i < (para->end - para->start);++i){
+        DWORD read_size;
+        if (!ReadFile(hSrc, buffer, sizeof(buffer), &read_size, src_overlapped)) {
+            // 错误处理
+            CloseHandle(hSrc);
+            return;
+        }
+
+        if (!WriteFile(hDst, buffer, read_size, nullptr, dest_overlapped)) {
+            // 错误处理
+            CloseHandle(hDst);
+            return;
+        }
+        para->poolFileCopy->bar_tick();
+    }
+    delete[] buffer;
+    CloseHandle(hDst);
+    CloseHandle(hSrc);
+}
+
+FileSystem::PoolFileCopy::~PoolFileCopy() {
+    pool->destroy_thread_pool();
+    indicators::show_console_cursor(true);
+}
+FileSystem::PoolFileCopy::PoolFileCopy(size_t numThread) {
+    indicators::show_console_cursor(false);
+    pool = new thread_pool::thread_pool(numThread);
+}
+void FileSystem::PoolFileCopy::Copy(const fs::path &srcFile, const fs::path &destFile) {
+    size_t fileSize = FileSystem::GetFileSize(srcFile.string()).GetSizeBits();
+    HANDLE hDst = CreateFileW(
+            utils::charToLPWSTR(destFile.string().c_str()),
+            GENERIC_WRITE,
+            FILE_SHARE_WRITE,
+            nullptr,
+            CREATE_ALWAYS,
+            FILE_ATTRIBUTE_NORMAL,
+            nullptr
+    );
+
+    if (hDst == INVALID_HANDLE_VALUE) {
+        LPCTSTR errMsg = nullptr;
+        DWORD dw_error = GetLastError();
+        errMsg = utils::ErrorMessage(dw_error);
+        SPDLOG_ERROR("Get Error ({}): {}\n", dw_error, errMsg);
+        return;
+    }
+    LARGE_INTEGER size;
+    size.QuadPart = fileSize;
+    SetFilePointerEx(hDst, size, nullptr, FILE_BEGIN);
+    if (size.LowPart == INVALID_SET_FILE_POINTER && GetLastError()
+                                                          != NO_ERROR)
+    {
+        SPDLOG_WARN("Error setting file size");
+        return;
+    }
+    CloseHandle(hDst);
+    size_t numThreads = 4;
+    size_t total_chunk = fileSize / bufferSize;
+    size_t each_thread = total_chunk / numThreads;
+
+    bar = new ProgressBar(option::BarWidth{40},
+                      option::Start{"["},
+                      option::Fill{"="},
+                      option::Lead{"="},
+                      option::Remainder{"-"},
+                      option::End{"]"},
+                      option::ForegroundColor{Color::blue},
+                      option::ShowElapsedTime{true},
+                      option::ShowRemainingTime{true},
+                      option::PrefixText{"Copying "+ srcFile.filename().string()},
+                      option::MaxProgress{total_chunk},
+                      option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}});
+
+    for (size_t i = 0; i < numThreads; i++) {
+        size_t start = i * each_thread;
+        size_t end = start + each_thread;
+        auto para = new copyThreadPara;
+        para->poolFileCopy = this;
+        para->srcFile = srcFile.string();
+        para->destFile = destFile.string();
+        para->start = start;
+        para->end = end;
+        pool->add_task(copyFileThreadFunc, (void*)para);
+    }
+}
+void FileSystem::PoolFileCopy::bar_tick() {
+    std::unique_lock<std::mutex> lock(bar_mutex);
+    done_chuck++;
+    bar->set_progress(done_chuck);
 }

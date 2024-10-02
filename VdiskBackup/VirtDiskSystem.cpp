@@ -47,7 +47,7 @@ bool VirtDiskSystem::CompactVdiskFileSystemAware(std::string path){
             option::Fill{"="},
             option::Lead{"="},
             option::Remainder{"-"},
-            option::End{" ]"},
+            option::End{"]"},
             option::ShowElapsedTime{true},
             option::ShowRemainingTime{true},
             option::Stream{std::cout},
@@ -86,13 +86,13 @@ bool VirtDiskSystem::CompactVdiskFileSystemAware(std::string path){
             }
         }else{
             errMsg = utils::ErrorMessage(dw_error);
-            SPDLOG_ERROR("Get Error (%d): %s\n", dw_error, errMsg);
+            SPDLOG_ERROR("Get Error ({}): {}\n", dw_error, errMsg);
             LocalFree((LPVOID)errMsg);
         }
     }
     DWORD result_detach = DetachVirtualDisk(handle, DETACH_VIRTUAL_DISK_FLAG_NONE, 0);
     if (result_detach != 0){
-        SPDLOG_ERROR("Have error detaching vhdx file, result %d", result_open);
+        SPDLOG_ERROR("Have error detaching vhdx file, result {}", result_open);
     }
     CloseHandle(handle);
     indicators::show_console_cursor(true);
@@ -126,7 +126,7 @@ bool VirtDiskSystem::CompactVdiskFileSystemAgnostic(std::string path){
             option::Fill{"="},
             option::Lead{"="},
             option::Remainder{"-"},
-            option::End{" ]"},
+            option::End{"]"},
             option::ShowElapsedTime{true},
             option::ShowRemainingTime{true},
             option::Stream{std::cout},
@@ -153,7 +153,7 @@ bool VirtDiskSystem::CompactVdiskFileSystemAgnostic(std::string path){
                 get_progress_result = GetVirtualDiskOperationProgress(handle, &overlap, &virtualDiskProgress);
                 if (get_progress_result != ERROR_SUCCESS){
                     errMsg = utils::ErrorMessage(dw_error);
-                    SPDLOG_ERROR("Get Error (%d): %s\n", dw_error, errMsg);
+                    SPDLOG_ERROR("Get Error ({}): {}\n", dw_error, errMsg);
                     LocalFree((LPVOID)errMsg);
                 }
                 if(virtualDiskProgress.OperationStatus != ERROR_IO_PENDING){
@@ -165,7 +165,7 @@ bool VirtDiskSystem::CompactVdiskFileSystemAgnostic(std::string path){
             }
         }else{
             errMsg = utils::ErrorMessage(dw_error);
-            SPDLOG_ERROR("Get Error (%d): %s\n", dw_error, errMsg);
+            SPDLOG_ERROR("Get Error ({}): {}\n", dw_error, errMsg);
             LocalFree((LPVOID)errMsg);
         }
     }
@@ -189,7 +189,7 @@ std::string VirtDiskSystem::GetVdiskParent(std::string path){
                                         VIRTUAL_DISK_ACCESS_NONE,
                                         OPEN_VIRTUAL_DISK_FLAG_NONE,&OpenParameters, &handle);
     if (result_open != 0){
-        SPDLOG_ERROR("Have error opening vhdx file, result %d", result_open);
+        SPDLOG_ERROR("Have error opening vhdx file, result {}", result_open);
         return "";
     }
     GET_VIRTUAL_DISK_INFO* disk_info;
@@ -229,6 +229,7 @@ std::string VirtDiskSystem::GetVdiskParent(std::string path){
         disk_info -> Version = GET_VIRTUAL_DISK_INFO_PARENT_LOCATION;
         GetVirtualDiskInformation(handle, &OutBufferSize, disk_info, nullptr);
     }
+    CloseHandle(handle);
     if (disk_info -> ParentLocation.ParentResolved){
         return std::string{utils::LPWSTRTochar(disk_info -> ParentLocation.ParentLocationBuffer)};
     }
@@ -262,7 +263,7 @@ bool VirtDiskSystem::MergeVdiskToParent(std::string path){
                                         VIRTUAL_DISK_ACCESS_ALL,
                                         OPEN_VIRTUAL_DISK_FLAG_NONE,&OpenParameters, &handle);
     if (result_open != 0){
-        SPDLOG_ERROR("Have error opening vhdx file, result %d", result_open);
+        SPDLOG_ERROR("Have error opening vhdx file, result {}", result_open);
         return FALSE;
     }
     GET_VIRTUAL_DISK_INFO* disk_info;
@@ -298,7 +299,7 @@ bool VirtDiskSystem::MergeVdiskToParent(std::string path){
             option::Fill{"="},
             option::Lead{"="},
             option::Remainder{"-"},
-            option::End{" ]"},
+            option::End{"]"},
             option::ShowElapsedTime{true},
             option::ShowRemainingTime{true},
             option::Stream{std::cout},
@@ -336,5 +337,5 @@ bool VirtDiskSystem::MergeVdiskToParent(std::string path){
     }
 
     CloseHandle(handle);
-
+    return true;
 }

@@ -1,0 +1,7 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="VdiskBackup_Backup" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="--backup" REDIRECT_INPUT="false" ELEVATE="true" USE_EXTERNAL_CONSOLE="true" EMULATE_TERMINAL="true" PASS_PARENT_ENVS_2="true" PROJECT_NAME="VdiskBackup" TARGET_NAME="VdiskBackup" CONFIG_NAME="x64-debug" RUN_TARGET_PROJECT_NAME="VdiskBackup" RUN_TARGET_NAME="VdiskBackup">
+    <method v="2">
+      <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+    </method>
+  </configuration>
+</component>

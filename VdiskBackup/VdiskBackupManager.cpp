@@ -248,10 +248,7 @@ void VdiskBackupManager::Init() {
 
     ringbuffer_sink = std::make_shared<spdlog::sinks::ringbuffer_sink_mt>(1024);
     std::vector<spdlog::sink_ptr> sinks {console_sink, ringbuffer_sink};
-    auto logger = std::make_shared<spdlog::async_logger>("vdisk_backup",
-                                                         sinks.begin(), sinks.end(),
-                                                         spdlog::thread_pool(),
-                                                         spdlog::async_overflow_policy::block);
+    auto logger = std::make_shared<spdlog::logger>("vdisk_backup",sinks.begin(), sinks.end());
     logger->set_pattern("[%n] [%Y-%m-%d %H:%M:%S.%e] [%l] [%t] [%s %!:%#]  %v");
     logger->set_level(spdlog::level::debug);
     spdlog::register_logger(logger);

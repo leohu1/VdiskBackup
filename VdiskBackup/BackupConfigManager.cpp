@@ -145,6 +145,7 @@ void BackupConfigManager::ShowGUI() {
     source_out << YAML::Key << "enable_file_system_aware_compact" << YAML::Value << config.enable_fs_aware;
     source_out << YAML::Key << "enable_file_system_agnostic_compact" << YAML::Value << config.enable_fs_agnostic;
     source_out << YAML::Key << "enable_merge" << YAML::Value << config.enable_merge;
+    source_out << YAML::EndMap << YAML::EndSeq << YAML::EndMap;
     std::ofstream source_of((config.source_path.root_path() / VdiskBackupManager::ConfigName).string());
     source_of << source_out.c_str();
     source_of.close();
@@ -159,6 +160,7 @@ void BackupConfigManager::ShowGUI() {
     dest_out << YAML::Key << "enable_file_system_aware_compact" << YAML::Value << config.enable_fs_aware;
     dest_out << YAML::Key << "enable_file_system_agnostic_compact" << YAML::Value << config.enable_fs_agnostic;
     dest_out << YAML::Key << "enable_merge" << YAML::Value << config.enable_merge;
+    dest_out << YAML::EndMap << YAML::EndSeq << YAML::EndMap;
     std::ofstream dest_of((config.destination_path.root_path() / VdiskBackupManager::ConfigName).string());
     dest_of << dest_out.c_str();
     dest_of.close();

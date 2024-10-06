@@ -1,35 +1,37 @@
 #include "VdiskBackupManager.h"
 #include "VirtDiskSystem.h"
-#include <iostream>
-#include <spdlog/async.h>
-#include <spdlog/sinks/rotating_file_sink.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
+#include "BackupConfigManager.h"
 #include <spdlog/spdlog.h>
+#include <cxxopts.hpp>
+#include <locale>
 
-int main()
+
+int main(int argc, char** argv)
 {
+    std::setlocale(LC_ALL, ".utf-8");
+    SetConsoleCP(CP_UTF8);
+    SetConsoleOutputCP(CP_UTF8);
     spdlog::init_thread_pool(8192, 1);
-    // Create a file rotating logger with 5 MB size max and 3 rotated files
-    auto max_size = 1048576 * 5;
-    auto max_files = 3;
-    auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-
-    auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("logs/vdisk_backup.txt", max_size, max_files);
-    std::vector<spdlog::sink_ptr> sinks {console_sink, file_sink};
-    auto logger = std::make_shared<spdlog::async_logger>("vdisk_backup",
-                                                         sinks.begin(), sinks.end(),
-                                                         spdlog::thread_pool(),
-                                                         spdlog::async_overflow_policy::block);
-    logger->set_pattern("[%n] [%Y-%m-%d %H:%M:%S.%e] [%l] [%t] [%s %!:%#]  %v");
-    logger->set_level(spdlog::level::debug);
     spdlog::flush_every(std::chrono::seconds(5));
-    spdlog::register_logger(logger);
-    spdlog::set_default_logger(logger);
 
-    VdiskBackupManager manager;
-    manager.GetAllConfigs();
-    manager.StartBackup();
-
+    cxxopts::Options options("VdiskBackup", "A program to backup vdisk");
+    options.add_options()
+            ("b,backup", "Backup Mode", cxxopts::value<bool>()->default_value("false"))
+                    ("c,config", "Config Mode", cxxopts::value<bool>()->default_value("true"));
+    auto result = options.parse(argc, argv);
+    bool config = result["config"].as<bool>();
+    if (config) {
+        BackupConfigManager manager;
+        manager.ShowGUI();
+    }
+    bool backup = result["backup"].as<bool>();
+    if (backup) {
+        VdiskBackupManager manager;
+        manager.Init();
+        manager.GetAllConfigs();
+        manager.StartBackup();
+        manager.CleanUp();
+    }
     spdlog::drop_all();
     return 0;
 }

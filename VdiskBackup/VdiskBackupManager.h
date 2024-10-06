@@ -11,6 +11,10 @@
 #include <vector>
 #include <filesystem>
 #include "FileSystem.h"
+#include <iostream>
+#include <spdlog/async.h>
+#include <spdlog/sinks/ringbuffer_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 namespace fs = std::filesystem;
 using namespace FileSystem;
@@ -31,15 +35,17 @@ public:
 };
 
 class VdiskBackupManager {
-const std::string ConfigName = "VdiskBackupConfig.yaml";
-const std::string BackupResult = "VdiskBackupResult.yaml";
 private:
     std::map<std::string, VdiskBackupConfig> backup_configs;
+    std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> ringbuffer_sink;
 public:
     VdiskBackupManager();
     void GetAllConfigs();
     void StartBackup();
+    void Init();
     void CleanUp();
+    constexpr const static char ConfigName[] = "VdiskBackupConfig.yaml";
+    constexpr const static char BackupResult[] = "VdiskBackupResult.yaml";
 private:
     std::map<std::string, std::string> GetLastMd5(fs::path path);
 };

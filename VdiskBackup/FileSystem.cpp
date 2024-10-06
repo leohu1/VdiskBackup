@@ -82,6 +82,7 @@ bool FileSystem::CopyFileWithProgressBar(const fs::path &srcPath, const fs::path
                 option::Stream{std::cout},
         };
         if (prefix_text.empty() == 0){
+            SPDLOG_INFO(prefix_text);
             std::cout << prefix_text << std::endl;
         }
         md5_state_t md5;

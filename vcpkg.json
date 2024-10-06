@@ -3,6 +3,8 @@
   "dependencies": [
     "spdlog",
     "indicators",
-    "yaml-cpp"
+    "yaml-cpp",
+    "cxxopts",
+    "ftxui"
   ]
 }

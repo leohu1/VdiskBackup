@@ -25,7 +25,7 @@ void VdiskBackupManager::GetAllConfigs() {
             fs::path base_path = utils::removeSpaces(it.drive_letter) + "\\";
             fs::path path = base_path / VdiskBackupManager::ConfigName;
             if (fs::exists(path)){
-                SPDLOG_INFO("get config at " + fs::absolute(path).string());
+                SPDLOG_INFO("Get config at " + fs::absolute(path).string());
                 YAML::Node configs_data = YAML::LoadFile(fs::absolute(path).string());
                 YAML::Node backups = configs_data["backups"];
                 if (backups && backups.IsSequence()){
@@ -92,6 +92,7 @@ void VdiskBackupManager::StartBackup() {
             if (config.enable_fs_aware){
                 FileSize original_file_size = FileSystem::GetFileSize(config.source_path.string());
                 if (original_file_size.GetSizeBits() >= config.min_compact_size){
+                    SPDLOG_INFO("Compact vhdx with filesystem aware, file: {}", config.source_path.string());
                     VirtDiskSystem::CompactVdiskFileSystemAware(config.source_path.string());
                     out << YAML::BeginMap;
                     out << YAML::Key << "id" << YAML::Value << "fs_aware_compact";
@@ -106,6 +107,7 @@ void VdiskBackupManager::StartBackup() {
             if (config.enable_fs_agnostic){
                 FileSize original_file_size = FileSystem::GetFileSize(config.source_path.string());
                 if (original_file_size.GetSizeBits() >= config.min_compact_size){
+                    SPDLOG_INFO("Compact vhdx with filesystem agnostic, file: {}", config.source_path.string());
                     VirtDiskSystem::CompactVdiskFileSystemAgnostic(config.source_path.string());
                     out << YAML::BeginMap;
                     out << YAML::Key << "id" << YAML::Value << "fs_agnostic_compact";
@@ -122,6 +124,7 @@ void VdiskBackupManager::StartBackup() {
                 if (original_file_size.GetSizeBits() >= config.min_merge_size) {
                     fs::path parent_path = VirtDiskSystem::GetVdiskParent(config.source_path.string());
                     if (fs::exists(parent_path)) {
+                        SPDLOG_INFO("Merging vhdx {} to {}", config.source_path.string(), fs::absolute(parent_path).string());
                         VirtDiskSystem::MergeVdiskToParent(config.source_path.string());
                         DWORD dw_error;
                         if ((dw_error = DeleteFileW(utils::charToLPWSTR(config.source_path.string().c_str()))) != 0){
@@ -205,11 +208,14 @@ std::map<std::string, std::string> VdiskBackupManager::GetLastMd5(fs::path path)
                     if(it->operator[]("files").IsSequence()){
                         YAML::Node files = it->operator[]("files");
                         for (YAML::const_iterator jt=files.begin();jt!=files.end();++jt) {
-                            if (it->operator[]("path") && it->operator[]("md5")){
+                            if (it->operator[]("path") && it->operator[]("md5")) {
                                 out.insert(
-                                        std::pair<std::string, std::string>
-                                                (it->operator[]("path").as<string>(),
-                                                        it->operator[]("md5").as<string>()));
+                                        std::pair<std::string, std::string>(
+                                                it->operator[]("path").as<string>(),
+                                                it->operator[]("md5").as<string>()));
+                                SPDLOG_INFO("Get last time's MD5 {}: {}",
+                                            it->operator[]("path").as<string>(),
+                                                    it->operator[]("md5").as<string>());
                             }
                         }
                     }
@@ -220,15 +226,37 @@ std::map<std::string, std::string> VdiskBackupManager::GetLastMd5(fs::path path)
     }
     return out;
 }
+
 void VdiskBackupManager::CleanUp() {
     SPDLOG_INFO("Cleaning up configs");
+    std::vector<std::string> log_messages = ringbuffer_sink->last_formatted();
     for (const auto& i : backup_configs){
         for (const auto& j : i.second.config_paths){
             if (fs::exists(j)){
                 fs::remove(j);
             }
         }
+        std::ofstream log(i.second.destination_path / "log.txt", std::ios::app);
+        for (const auto& k : log_messages){
+            log << k << std::endl;
+        }
+        log.close();
     }
+}
+void VdiskBackupManager::Init() {
+    auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+
+    ringbuffer_sink = std::make_shared<spdlog::sinks::ringbuffer_sink_mt>(1024);
+    std::vector<spdlog::sink_ptr> sinks {console_sink, ringbuffer_sink};
+    auto logger = std::make_shared<spdlog::async_logger>("vdisk_backup",
+                                                         sinks.begin(), sinks.end(),
+                                                         spdlog::thread_pool(),
+                                                         spdlog::async_overflow_policy::block);
+    logger->set_pattern("[%n] [%Y-%m-%d %H:%M:%S.%e] [%l] [%t] [%s %!:%#]  %v");
+    logger->set_level(spdlog::level::debug);
+    spdlog::register_logger(logger);
+    spdlog::set_default_logger(logger);
+
 }
 
 VdiskBackupConfig::~VdiskBackupConfig() = default;

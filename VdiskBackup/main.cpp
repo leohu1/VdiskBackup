@@ -16,7 +16,7 @@ int main(int argc, char** argv)
         std::cout << "Interrupt";
         exit(i);
     });
-    //    spdlog::init_thread_pool(8192, 1);
+    //spdlog::init_thread_pool(8192, 1);
     spdlog::flush_every(std::chrono::seconds(5));
 
     cxxopts::Options options("VdiskBackup", "A program to backup vdisk");

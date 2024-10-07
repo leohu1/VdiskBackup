@@ -39,3 +39,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE indicators::indicators)
 target_link_libraries(${PROJECT_NAME} PRIVATE cxxopts::cxxopts)
 target_link_libraries(${PROJECT_NAME} PRIVATE ftxui::dom ftxui::screen ftxui::component)
 
+set(SOURCE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/SetBoot.bat")
+set(DESTINATION_PATH "${CMAKE_CURRENT_BINARY_DIR}")
+
+# 使用file命令复制文件
+add_custom_command(TARGET your_target
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${SOURCE_FILE} ${DESTINATION_PATH})
+

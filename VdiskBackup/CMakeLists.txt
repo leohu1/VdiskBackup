@@ -3,7 +3,7 @@ find_package(indicators CONFIG REQUIRED)
 find_package(yaml-cpp CONFIG REQUIRED)
 find_package(ftxui CONFIG REQUIRED)
 find_package(clipp CONFIG REQUIRED)
-find_package(Qt6 COMPONENTS Core Gui Quick REQUIRED)
+#find_package(Qt6 COMPONENTS Core Gui Quick REQUIRED)
 
 add_subdirectory(common)
 add_subdirectory(backend)

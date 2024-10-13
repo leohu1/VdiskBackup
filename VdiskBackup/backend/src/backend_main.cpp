@@ -20,56 +20,38 @@ int main(int argc, char** argv)
     //spdlog::init_thread_pool(8192, 1);
     spdlog::flush_every(std::chrono::seconds(5));
 
-    enum class mode {make, find, help};
-    mode selected = mode::help;
-    std::vector<std::string> input;
-    std::string dict, out;
-    bool split = false, progr = false;
+    enum class mode {backup, config, help};
+    mode selected = mode::backup;
 
-    auto dictionary = required("-dict") & value("dictionary", dict);
+    auto makeMode = (command("backup").set(selected,mode::backup));
 
-    auto makeMode = (
-            command("make").set(selected,mode::make),
-            values("wordfile", input),
-            dictionary,
-            option("--progress", "-p").set(progr) % "show progress" );
-
-    auto findMode = (
-            command("find").set(selected,mode::find),
-            values("infile", input),
-            dictionary,
-            (option("-o", "--output") & value("outfile", out)) % "write to file instead of stdout",
-            ( option("-split"  ).set(split,true) |
-             option("-nosplit").set(split,false) ) % "(do not) split output" );
+    auto findMode = (command("config").set(selected,mode::config));
 
     auto cli = (
             (makeMode | findMode | command("help").set(selected,mode::help) ),
-            option("-v", "--version").call([]{cout << "version 1.0\n\n";}).doc("show version")  );
+            clipp::option("-v", "--version").call([]{cout << "version 1.0\n\n";}).doc("show version")  );
 
     if(parse(argc, argv, cli)) {
         switch(selected) {
-            case mode::make: /* ... */ break;
-            case mode::find: /* ... */ break;
-            case mode::help: cout << make_man_page(cli, "finder"); break;
+            case mode::config: {
+                BackupConfigManager config_manager;
+                config_manager.ShowGUI();
+                break;
+            }
+            case mode::backup: {
+                VdiskBackupManager backup_manager;
+                backup_manager.Init();
+                backup_manager.GetAllConfigs();
+                backup_manager.StartBackup();
+                backup_manager.CleanUp();
+                break;
+            }
+            case mode::help: cout << make_man_page(cli, "Vdiskbakup"); break;
         }
     } else {
-        cout << usage_lines(cli, "finder") << '\n';
+        cout << usage_lines(cli, "Vdiskbackup") << '\n';
     }
 
-
-    bool config = result["config"].as<bool>();
-    if (config) {
-        BackupConfigManager manager;
-        manager.ShowGUI();
-    }
-    bool backup = result["backup"].as<bool>();
-    if (backup) {
-        VdiskBackupManager manager;
-        manager.Init();
-        manager.GetAllConfigs();
-        manager.StartBackup();
-        manager.CleanUp();
-    }
     spdlog::drop_all();
     return 0;
 }

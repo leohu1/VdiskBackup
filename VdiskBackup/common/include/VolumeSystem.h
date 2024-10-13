@@ -4,9 +4,9 @@
 
 #ifndef VDISKBACKUP_VOLUMESYSTEM_H
 #define VDISKBACKUP_VOLUMESYSTEM_H
-#include <vector>
+#include <Windows.h>
 #include <string>
-#include <windows.h>
+#include <vector>
 using namespace std;
 
 struct VolumeInfo{

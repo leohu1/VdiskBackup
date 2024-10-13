@@ -6,11 +6,11 @@
 #include "FileSystem.h"
 #include "VirtDiskSystem.h"
 #include "VolumeSystem.h"
+#include "spdlog/spdlog.h"
 #include "utils.h"
 #include "yaml-cpp/yaml.h"
-#include <spdlog/spdlog.h>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
 VdiskBackupManager::VdiskBackupManager() {
     SPDLOG_INFO("VdiskBackupManager initialized");

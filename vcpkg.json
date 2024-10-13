@@ -1,10 +1,19 @@
 {
-  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
-  "dependencies": [
-    "spdlog",
-    "indicators",
-    "yaml-cpp",
-    "cxxopts",
-    "ftxui"
-  ]
+  "$schema" : "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "dependencies" : [ {
+    "name" : "spdlog",
+    "version>=" : "1.14.1"
+  }, {
+    "name" : "indicators",
+    "version>=" : "2.3"
+  }, {
+    "name" : "yaml-cpp",
+    "version>=" : "0.8.0#1"
+  }, {
+    "name" : "ftxui",
+    "version>=" : "5.0.0"
+  }, {
+    "name" : "clipp",
+    "version>=" : "2019-04-30#2"
+  } ]
 }

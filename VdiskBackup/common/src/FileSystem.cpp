@@ -3,14 +3,12 @@
 //
 
 #include "FileSystem.h"
-#include "indicators/progress_bar.hpp"
 #include "md5.hpp"
 #include "utils.h"
-#include <thread>
+#include "indicators/cursor_control.hpp"
+#include "indicators/progress_bar.hpp"
+#include "spdlog/spdlog.h"
 #include <future>
-#include <indicators/block_progress_bar.hpp>
-#include <indicators/cursor_control.hpp>
-#include <spdlog/spdlog.h>
 #include <string>
 
 using namespace indicators;

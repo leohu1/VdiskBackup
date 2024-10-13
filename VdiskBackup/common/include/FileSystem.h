@@ -5,13 +5,13 @@
 #ifndef VDISKBACKUP_FILESYSTEM_H
 #define VDISKBACKUP_FILESYSTEM_H
 
-#include <string>
+#include "indicators/dynamic_progress.hpp"
+#include "indicators/progress_bar.hpp"
+#include "thread_pool.h"
 #include <filesystem>
 #include <fstream>
 #include <map>
-#include <indicators/progress_bar.hpp>
-#include <indicators/dynamic_progress.hpp>
-#include "thread_pool.h"
+#include <string>
 
 namespace fs = std::filesystem;
 using namespace indicators;

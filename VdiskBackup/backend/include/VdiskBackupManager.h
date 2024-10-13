@@ -5,16 +5,16 @@
 #ifndef VDISKBACKUP_VDISKBACKUPMANAGER_H
 #define VDISKBACKUP_VDISKBACKUPMANAGER_H
 
+#include "FileSystem.h"
+#include "spdlog/async.h"
+#include "spdlog/sinks/ringbuffer_sink.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
+#include <filesystem>
+#include <iostream>
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
-#include <filesystem>
-#include "FileSystem.h"
-#include <iostream>
-#include <spdlog/async.h>
-#include <spdlog/sinks/ringbuffer_sink.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
 
 namespace fs = std::filesystem;
 using namespace FileSystem;

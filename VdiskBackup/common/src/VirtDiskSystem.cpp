@@ -1,12 +1,12 @@
 #include "VirtDiskSystem.h"
 #include "utils.h"
-#include <indicators/progress_bar.hpp>
-#include <indicators/cursor_control.hpp>
-#include <Windows.h>
+#include "indicators/cursor_control.hpp"
+#include "indicators/progress_bar.hpp"
+#include "spdlog/spdlog.h"
 #include <Shlwapi.h>
+#include <Windows.h>
 #include <initguid.h>
 #include <virtdisk.h>
-#include <spdlog/spdlog.h>
 #pragma comment(lib,"VirtDisk.lib")
 using namespace indicators;
 

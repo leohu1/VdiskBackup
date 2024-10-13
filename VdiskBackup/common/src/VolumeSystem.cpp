@@ -3,7 +3,7 @@
 //
 
 #include "VolumeSystem.h"
-#include <windows.h>
+#include <Windows.h>
 
 
 static std::string WChar2String (WCHAR wchars[]){

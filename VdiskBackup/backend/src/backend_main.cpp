@@ -56,11 +56,7 @@ int main(int argc, char** argv)
         cout << usage_lines(cli, "finder") << '\n';
     }
 
-    cxxopts::Options options("VdiskBackup", "A program to backup vdisk");
-    options.add_options()
-            ("b,backup", "Backup Mode", cxxopts::value<bool>()->default_value("false"))
-                    ("c,config", "Config Mode", cxxopts::value<bool>()->default_value("false"));
-    auto result = options.parse(argc, argv);
+
     bool config = result["config"].as<bool>();
     if (config) {
         BackupConfigManager manager;

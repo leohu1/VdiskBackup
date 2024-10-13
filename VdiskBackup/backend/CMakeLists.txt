@@ -8,7 +8,6 @@ target_link_libraries(${PROJECT_NAME}_backend PRIVATE clipp::clipp)
 target_link_libraries(${PROJECT_NAME}_backend PRIVATE yaml-cpp::yaml-cpp)
 target_link_libraries(${PROJECT_NAME}_backend PRIVATE spdlog::spdlog_header_only)
 target_link_libraries(${PROJECT_NAME}_backend PRIVATE indicators::indicators)
-target_link_libraries(${PROJECT_NAME}_backend PRIVATE cxxopts::cxxopts)
 target_link_libraries(${PROJECT_NAME}_backend PRIVATE ftxui::dom ftxui::screen ftxui::component)
 target_link_libraries(${PROJECT_NAME}_backend PRIVATE ${PROJECT_NAME}_common)
 

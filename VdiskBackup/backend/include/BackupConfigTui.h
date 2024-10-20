@@ -1,23 +1,19 @@
 //
-// Created by 26071 on 2024/10/6.
+// Created by 26071 on 2024/10/19.
 //
 
-#ifndef VDISKBACKUP_BACKUPCONFIGMANAGER_H
-#define VDISKBACKUP_BACKUPCONFIGMANAGER_H
-
-#include "VdiskBackupManager.h"// for separator, gauge, text, Element, operator|, vbox, border
+#ifndef VDISKBACKUP_BACKUPCONFIGTUI_H
+#define VDISKBACKUP_BACKUPCONFIGTUI_H
 #include "ftxui/component/captured_mouse.hpp"
 #include "ftxui/component/component.hpp"         // for Slider, Checkbox, Vertical, Renderer, Button, Input, Menu, Radiobox, Toggle
 #include "ftxui/component/component_base.hpp"    // for ComponentBase
 #include "ftxui/component/screen_interactive.hpp"// for Component, ScreenInteractive
 #include "ftxui/dom/elements.hpp"
 #include "ftxui/util/ref.hpp"
-#include "yaml-cpp/yaml.h"
-#include <memory>
-#include <string>
-
+#include "VdiskBackupManager.h"
 using namespace ftxui;
-class BackupConfigManager {
+
+class BackupConfigTui {
 private:
     static ButtonOption ButtonStyle() {
         auto option = ButtonOption::Animated();
@@ -30,9 +26,18 @@ private:
         };
         return option;
     }
+    static Component Wrap(const std::string& name, const Component& component) {
+        return Renderer(component, [name, component] {
+            return hbox({
+                           text(name),
+                           separator(),
+                           component->Render(),
+                   });
+        });
+    }
 public:
     void ShowGUI();
 };
 
 
-#endif//VDISKBACKUP_BACKUPCONFIGMANAGER_H
+#endif//VDISKBACKUP_BACKUPCONFIGTUI_H

@@ -1,4 +1,4 @@
-#include "BackupConfigManager.h"
+#include "BackupConfigTui.h"
 #include "VirtDiskSystem.h"
 #include "clipp.h"
 #include "spdlog/spdlog.h"
@@ -14,7 +14,7 @@ int main(int argc, char** argv)
     SetConsoleCP(CP_UTF8);
     SetConsoleOutputCP(CP_UTF8);
     signal(SIGINT, [](int i){
-        std::cout << "Interrupt";
+        std::cout << "Interrupt" << std::endl;
         exit(i);
     });
     //spdlog::init_thread_pool(8192, 1);
@@ -34,7 +34,7 @@ int main(int argc, char** argv)
     if(parse(argc, argv, cli)) {
         switch(selected) {
             case mode::config: {
-                BackupConfigManager config_manager;
+                BackupConfigTui config_manager;
                 config_manager.ShowGUI();
                 break;
             }

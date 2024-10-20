@@ -10,7 +10,7 @@
 #pragma comment(lib,"VirtDisk.lib")
 using namespace indicators;
 
-bool VirtDiskSystem::CompactVdiskFileSystemAware(std::string path){
+bool VirtDiskSystem::CompactVdisk(std::string path, VdiskCompactOption option){
     std::wstring w_path(path.begin(), path.end());
     const wchar_t *p_w = w_path.c_str();
     VIRTUAL_STORAGE_TYPE vst;
@@ -19,24 +19,36 @@ bool VirtDiskSystem::CompactVdiskFileSystemAware(std::string path){
     void *handle;
     OPEN_VIRTUAL_DISK_PARAMETERS OpenParameters;
     OpenParameters.Version = OPEN_VIRTUAL_DISK_VERSION_1;
-    DWORD result_open = OpenVirtualDisk(&vst, p_w,
-                                        VIRTUAL_DISK_ACCESS_ALL,
-                                        OPEN_VIRTUAL_DISK_FLAG_NONE,&OpenParameters, &handle);
+    DWORD result_open;
+    switch (option) {
+        case FSAware:
+            result_open = OpenVirtualDisk(&vst, p_w,
+                                          VIRTUAL_DISK_ACCESS_METAOPS | VIRTUAL_DISK_ACCESS_ATTACH_RO,
+                                          OPEN_VIRTUAL_DISK_FLAG_NONE,&OpenParameters, &handle);
+            break;
+        case FSAgnostic:
+            result_open = OpenVirtualDisk(&vst, p_w,
+                                          VIRTUAL_DISK_ACCESS_METAOPS,
+                                          OPEN_VIRTUAL_DISK_FLAG_NONE,&OpenParameters, &handle);
+            break;
+    }
     if (result_open != 0){
         SPDLOG_ERROR("Have error opening vhdx file, result ({}): {}", result_open, utils::ErrorMessage(result_open));
         return false;
     }
-    ATTACH_VIRTUAL_DISK_PARAMETERS attachParameters;
-    attachParameters.Version = ATTACH_VIRTUAL_DISK_VERSION_1;
-    DWORD result_attach = AttachVirtualDisk(handle, nullptr,
-                                            ATTACH_VIRTUAL_DISK_FLAG_READ_ONLY,
-                                            0, &attachParameters, nullptr);
-    if (result_attach != 0){
-        SPDLOG_ERROR("Have error attaching vhdx file, result ({}): {}", result_attach, utils::ErrorMessage(result_attach));
-        return false;
+    if (option == FSAware){
+        ATTACH_VIRTUAL_DISK_PARAMETERS attachParameters;
+        attachParameters.Version = ATTACH_VIRTUAL_DISK_VERSION_1;
+        DWORD result_attach = AttachVirtualDisk(handle, nullptr,
+                                                ATTACH_VIRTUAL_DISK_FLAG_READ_ONLY,
+                                                0, &attachParameters, nullptr);
+        if (result_attach != 0){
+            SPDLOG_ERROR("Have error attaching vhdx file, result ({}): {}", result_attach, utils::ErrorMessage(result_attach));
+            return false;
+        }
     }
     COMPACT_VIRTUAL_DISK_PARAMETERS compactParameters;
-    compactParameters.Version = COMPACT_VIRTUAL_DISK_VERSION_UNSPECIFIED;
+    compactParameters.Version = COMPACT_VIRTUAL_DISK_VERSION_1;
     compactParameters.Version1.Reserved = 0;
     OVERLAPPED overlap;
     memset(&overlap, 0, sizeof(overlap));
@@ -60,117 +72,45 @@ bool VirtDiskSystem::CompactVdiskFileSystemAware(std::string path){
     VIRTUAL_DISK_PROGRESS virtualDiskProgress = {0};
     LPCTSTR errMsg = nullptr;
 
-    if (!result_compact)
-    {
-        if (dw_error == ERROR_IO_PENDING){
-            BOOL bPending=TRUE;
-            DWORD get_progress_result;
+    if (result_compact == ERROR_IO_PENDING){
+        BOOL bPending = TRUE;
+        DWORD get_progress_result;
 
-            // Loop until the I/O is complete, that is: the overlapped
-            // event is signaled.
+        // Loop until the I/O is complete, that is: the overlapped
+        // event is signaled.
 
-            while( bPending )
-            {
-                get_progress_result = GetVirtualDiskOperationProgress(handle, &overlap, &virtualDiskProgress);
-                if (get_progress_result != ERROR_SUCCESS){
-                    errMsg = utils::ErrorMessage(dw_error);
-                    SPDLOG_ERROR("Get Error (%d): %s\n", dw_error, errMsg);
-                    LocalFree((LPVOID)errMsg);
-                }
-                if(virtualDiskProgress.OperationStatus != ERROR_IO_PENDING){
-                    bPending = FALSE;
-                }
-                bar.set_option(option::MaxProgress{virtualDiskProgress.CompletionValue});
-                bar.set_progress(virtualDiskProgress.CurrentValue);
-                Sleep(100);
+        while( bPending )
+        {
+            get_progress_result = GetVirtualDiskOperationProgress(handle, &overlap, &virtualDiskProgress);
+            if (get_progress_result != ERROR_SUCCESS){
+                dw_error = GetLastError();
+                errMsg = utils::ErrorMessage(dw_error);
+                SPDLOG_ERROR("Get Error ({}): {}\n", dw_error, errMsg);
+                LocalFree((LPVOID)errMsg);
             }
-        }else{
-            errMsg = utils::ErrorMessage(dw_error);
-            SPDLOG_ERROR("Get Error ({}): {}\n", dw_error, errMsg);
-            LocalFree((LPVOID)errMsg);
+            if(virtualDiskProgress.OperationStatus != ERROR_IO_PENDING){
+                bPending = FALSE;
+            }
+            bar.set_option(option::MaxProgress{virtualDiskProgress.CompletionValue});
+            bar.set_progress(virtualDiskProgress.CurrentValue);
+            Sleep(100);
         }
+    }else{
+        dw_error = GetLastError();
+        errMsg = utils::ErrorMessage(dw_error);
+        SPDLOG_ERROR("Get Error ({}): {}\n", dw_error, errMsg);
+        LocalFree((LPVOID)errMsg);
     }
-    DWORD result_detach = DetachVirtualDisk(handle, DETACH_VIRTUAL_DISK_FLAG_NONE, 0);
-    if (result_detach != 0){
-        SPDLOG_ERROR("Have error detaching vhdx file, result {}", result_open);
-    }
-    CloseHandle(handle);
-    indicators::show_console_cursor(true);
-    return true;
-}
-
-bool VirtDiskSystem::CompactVdiskFileSystemAgnostic(std::string path){
-    std::wstring w_path(path.begin(), path.end());
-    const wchar_t *p_w = w_path.c_str();
-    VIRTUAL_STORAGE_TYPE vst;
-    vst.DeviceId = VIRTUAL_STORAGE_TYPE_DEVICE_VHDX;
-    vst.VendorId = VIRTUAL_STORAGE_TYPE_VENDOR_MICROSOFT;
-    void *handle;
-    OPEN_VIRTUAL_DISK_PARAMETERS OpenParameters;
-    OpenParameters.Version = OPEN_VIRTUAL_DISK_VERSION_1;
-    DWORD result_open = OpenVirtualDisk(&vst, p_w,
-                                        VIRTUAL_DISK_ACCESS_METAOPS,
-                                        OPEN_VIRTUAL_DISK_FLAG_NONE,&OpenParameters, &handle);
-    if (result_open != 0){
-        SPDLOG_ERROR("Have error opening vhdx file, result %d", result_open);
-    }
-    COMPACT_VIRTUAL_DISK_PARAMETERS compactParameters;
-    compactParameters.Version = COMPACT_VIRTUAL_DISK_VERSION_UNSPECIFIED;
-    compactParameters.Version1.Reserved = 0;
-    OVERLAPPED overlap;
-    memset(&overlap, 0, sizeof(overlap));
-
-    ProgressBar bar{
-            option::BarWidth{50},
-            option::Start{"["},
-            option::Fill{"="},
-            option::Lead{"="},
-            option::Remainder{"-"},
-            option::End{"]"},
-            option::ShowElapsedTime{true},
-            option::ShowRemainingTime{true},
-            option::Stream{std::cout},
-    };
-
-    indicators::show_console_cursor(false);
-
-    DWORD result_compact = CompactVirtualDisk(handle, COMPACT_VIRTUAL_DISK_FLAG_NONE, &compactParameters, &overlap);
-    DWORD dw_error = GetLastError();
-    VIRTUAL_DISK_PROGRESS virtualDiskProgress = {0};
-    LPCTSTR errMsg = nullptr;
-
-    if (!result_compact)
-    {
-        if (dw_error == ERROR_IO_PENDING){
-            BOOL bPending=TRUE;
-            DWORD get_progress_result;
-
-            // Loop until the I/O is complete, that is: the overlapped
-            // event is signaled.
-
-            while( bPending )
-            {
-                get_progress_result = GetVirtualDiskOperationProgress(handle, &overlap, &virtualDiskProgress);
-                if (get_progress_result != ERROR_SUCCESS){
-                    errMsg = utils::ErrorMessage(dw_error);
-                    SPDLOG_ERROR("Get Error ({}): {}\n", dw_error, errMsg);
-                    LocalFree((LPVOID)errMsg);
-                }
-                if(virtualDiskProgress.OperationStatus != ERROR_IO_PENDING){
-                    bPending = FALSE;
-                }
-                bar.set_option(option::MaxProgress{virtualDiskProgress.CompletionValue});
-                bar.set_progress(virtualDiskProgress.CurrentValue);
-                Sleep(100);
-            }
-        }else{
+    if (option == FSAware){
+        DWORD result_detach = DetachVirtualDisk(handle, DETACH_VIRTUAL_DISK_FLAG_NONE, 0);
+        if (result_detach != 0){
+            dw_error = GetLastError();
             errMsg = utils::ErrorMessage(dw_error);
-            SPDLOG_ERROR("Get Error ({}): {}\n", dw_error, errMsg);
+            SPDLOG_ERROR("Have error detaching vhdx file, result ({}): {}\n", dw_error, errMsg);
             LocalFree((LPVOID)errMsg);
         }
     }
     CloseHandle(handle);
-
     indicators::show_console_cursor(true);
     return true;
 }
@@ -258,7 +198,7 @@ bool VirtDiskSystem::MergeVdiskToParent(std::string path){
     void *handle;
     OPEN_VIRTUAL_DISK_PARAMETERS OpenParameters;
     OpenParameters.Version = OPEN_VIRTUAL_DISK_VERSION_1;
-    OpenParameters.Version1.RWDepth = 1;
+    OpenParameters.Version1.RWDepth = 2;
     DWORD result_open = OpenVirtualDisk(&vst, p_w,
                                         VIRTUAL_DISK_ACCESS_ALL,
                                         OPEN_VIRTUAL_DISK_FLAG_NONE,&OpenParameters, &handle);
@@ -305,37 +245,53 @@ bool VirtDiskSystem::MergeVdiskToParent(std::string path){
             option::Stream{std::cout},
     };
 
-    if (!result_merge)
-    {
-        if (dw_error == ERROR_IO_PENDING){
-            BOOL bPending=TRUE;
-            DWORD get_progress_result;
+    if (result_merge == ERROR_IO_PENDING){
+        BOOL bPending = TRUE;
+        DWORD get_progress_result;
 
-            // Loop until the I/O is complete, that is: the overlapped
-            // event is signaled.
+        // Loop until the I/O is complete, that is: the overlapped
+        // event is signaled.
 
-            while( bPending )
-            {
-                get_progress_result = GetVirtualDiskOperationProgress(handle, &overlap, &virtualDiskProgress);
-                if (get_progress_result != ERROR_SUCCESS){
-                    errMsg = utils::ErrorMessage(dw_error);
-                    SPDLOG_ERROR("Get Error (%d): %s\n", dw_error, errMsg);
-                    LocalFree((LPVOID)errMsg);
-                }
-                if(virtualDiskProgress.OperationStatus != ERROR_IO_PENDING){
-                    bPending = FALSE;
-                }
-                bar.set_option(option::MaxProgress{virtualDiskProgress.CompletionValue});
-                bar.set_progress(virtualDiskProgress.CurrentValue);
-                Sleep(100);
+        while( bPending )
+        {
+            get_progress_result = GetVirtualDiskOperationProgress(handle, &overlap, &virtualDiskProgress);
+            if (get_progress_result != ERROR_SUCCESS){
+                dw_error = GetLastError();
+                errMsg = utils::ErrorMessage(dw_error);
+                SPDLOG_ERROR("Get Error ({}): {}\n", dw_error, errMsg);
+                LocalFree((LPVOID)errMsg);
             }
-        }else{
-            errMsg = utils::ErrorMessage(dw_error);
-            SPDLOG_ERROR("Get Error (%d): %s\n", dw_error, errMsg);
-            LocalFree((LPVOID)errMsg);
+            if(virtualDiskProgress.OperationStatus != ERROR_IO_PENDING){
+                bPending = FALSE;
+            }
+            bar.set_option(option::MaxProgress{virtualDiskProgress.CompletionValue});
+            bar.set_progress(virtualDiskProgress.CurrentValue);
+            Sleep(100);
         }
+    }else{
+        dw_error = GetLastError();
+        errMsg = utils::ErrorMessage(dw_error);
+        SPDLOG_ERROR("Get Error ({}): {}\n", dw_error, errMsg);
+        LocalFree((LPVOID)errMsg);
     }
 
     CloseHandle(handle);
     return true;
+}
+
+bool VirtDiskSystem::BuildChildVdisk(std::string path, std::string parent_path){
+    std::wstring w_parent_path(parent_path.begin(), parent_path.end());
+    const wchar_t *p_p_w = w_parent_path.c_str();
+    std::wstring w_path(path.begin(), path.end());
+    const wchar_t *p_w = w_path.c_str();
+    CREATE_VIRTUAL_DISK_PARAMETERS CVparameters;
+    CVparameters.Version = CREATE_VIRTUAL_DISK_VERSION_1;
+    CVparameters.Version1.ParentPath = p_p_w;
+    CVparameters.Version1.UniqueId = {0};
+    CVparameters.Version1.BlockSizeInBytes = CREATE_VIRTUAL_DISK_PARAMETERS_DEFAULT_BLOCK_SIZE;
+    CVparameters.Version1.MaximumSize = 0;
+    VIRTUAL_STORAGE_TYPE vst;
+    vst.DeviceId = VIRTUAL_STORAGE_TYPE_DEVICE_VHDX;
+    vst.VendorId = VIRTUAL_STORAGE_TYPE_VENDOR_MICROSOFT;
+
 }

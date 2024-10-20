@@ -8,7 +8,7 @@ SettingsHelper::SettingsHelper(QObject *parent) : QObject(parent) {
 
 SettingsHelper::~SettingsHelper() = default;
 
-void SettingsHelper::save(const QString &key, QVariant val) {
+void SettingsHelper::save(const QString &key, const QVariant& val) {
     m_settings->setValue(key, val);
 }
 

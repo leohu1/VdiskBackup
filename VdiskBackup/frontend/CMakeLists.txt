@@ -5,6 +5,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Quick Svg Network)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Quick Svg Network)
+include(FetchContent)
+FetchContent_Declare(
+        FluentUI
+        GIT_REPOSITORY https://github.com/zhuzichu520/FluentUI.git
+        GIT_TAG 1.7.7
+)
+
+set(FLUENTUI_BUILD_EXAMPLES OFF)
+set(FLUENTUI_BUILD_STATIC_LIB ON)
+if (FLUENTUI_BUILD_STATIC_LIB)
+    add_definitions(-DFLUENTUI_BUILD_STATIC_LIB)
+endif ()
+
+FetchContent_MakeAvailable(FluentUI)
 FetchContent_GetProperties(FluentUI)
 message(${FluentUI_SOURCE_DIR})
 
@@ -13,12 +27,21 @@ if (${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(${PROJECT_NAME}_frontend
             MANUAL_FINALIZATION
             ${frontend_srcs}
+            frontend.qrc
     )
 else ()
     add_executable(${PROJECT_NAME}_frontend
             ${frontend_srcs}
     )
 endif ()
+file(GLOB QML_FILES qml/*.qml)
+qt6_add_resources(${PROJECT_NAME}_frontend "qml"
+        PREFIX
+        "/frontend"
+        FILES
+        ${QML_FILES}
+)
+
 #复制程序运行所需要的动态库
 if (WIN32)
     if (MSVC)
@@ -53,6 +76,21 @@ target_compile_definitions(${PROJECT_NAME}_frontend
         PRIVATE
         QT_MESSAGELOGCONTEXT
 )
+add_dependencies(${PROJECT_NAME}_frontend Script-UpdateTranslations)
+
+#添加国际化脚本
+find_program(QT_LUPDATE NAMES lupdate lupdate-qt6)
+find_program(QT_LRELEASE NAMES lrelease lrelease-qt6)
+file(GLOB TS_FILE_PATHS ${CMAKE_CURRENT_LIST_DIR}/ *.ts)
+add_custom_target(Script-UpdateTranslations
+        COMMAND ${QT_LUPDATE} ${CMAKE_CURRENT_LIST_DIR} -ts frontend_en_US.ts WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+        COMMAND ${QT_LUPDATE} ${CMAKE_CURRENT_LIST_DIR} -ts frontend_zh_CN.ts WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+        COMMAND ${QT_LRELEASE} ${PROJECT_NAME}_en_US.ts WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+        COMMAND ${QT_LRELEASE} ${PROJECT_NAME}_zh_CN.ts WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${APPLICATION_DIR_PATH}/i18n
+        COMMAND ${CMAKE_COMMAND} -E copy frontend_en_US.qm frontend_zh_CN.qm ${APPLICATION_DIR_PATH}/i18n
+        SOURCES ${TS_FILE_PATHS}
+)
 
 #目标文件链接库
 target_link_libraries(${PROJECT_NAME}_frontend PRIVATE
@@ -60,4 +98,5 @@ target_link_libraries(${PROJECT_NAME}_frontend PRIVATE
         Qt${QT_VERSION_MAJOR}::Svg
         Qt${QT_VERSION_MAJOR}::Network
         fluentuiplugin
+        spdlog::spdlog_header_only
 )

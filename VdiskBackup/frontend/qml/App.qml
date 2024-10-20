@@ -25,10 +25,6 @@ FluLauncher {
         }
     }
     Component.onCompleted: {
-        Network.openLog = false
-        Network.setInterceptor(function(param){
-            param.addHeader("Token","000000000000000000000")
-        })
         FluApp.init(app,Qt.locale(TranslateHelper.current))
         FluApp.windowIcon = "qrc:/example/res/image/favicon.ico"
         FluApp.useSystemAppBar = SettingsHelper.getUseSystemAppBar()
@@ -62,62 +58,6 @@ FluLauncher {
             sequence: "Ctrl+Alt+Q"
             onActivated: {
                 FluRouter.exit()
-            }
-        }
-        FluHotkey{
-            name: qsTr("Test1")
-            sequence: "Alt+A"
-            onActivated: {
-                FluRouter.navigate("/hotkey",{sequence:sequence})
-            }
-        }
-        FluHotkey{
-            name: qsTr("Test2")
-            sequence: "Alt+B"
-            onActivated: {
-                FluRouter.navigate("/hotkey",{sequence:sequence})
-            }
-        }
-        FluHotkey{
-            name: qsTr("Test3")
-            sequence: "Alt+C"
-            onActivated: {
-                FluRouter.navigate("/hotkey",{sequence:sequence})
-            }
-        }
-        FluHotkey{
-            name: qsTr("Test4")
-            sequence: "Alt+D"
-            onActivated: {
-                FluRouter.navigate("/hotkey",{sequence:sequence})
-            }
-        }
-        FluHotkey{
-            name: qsTr("Test5")
-            sequence: "Alt+E"
-            onActivated: {
-                FluRouter.navigate("/hotkey",{sequence:sequence})
-            }
-        }
-        FluHotkey{
-            name: qsTr("Test6")
-            sequence: "Alt+F"
-            onActivated: {
-                FluRouter.navigate("/hotkey",{sequence:sequence})
-            }
-        }
-        FluHotkey{
-            name: qsTr("Test7")
-            sequence: "Alt+G"
-            onActivated: {
-                FluRouter.navigate("/hotkey",{sequence:sequence})
-            }
-        }
-        FluHotkey{
-            name: qsTr("Test8")
-            sequence: "Alt+H"
-            onActivated: {
-                FluRouter.navigate("/hotkey",{sequence:sequence})
             }
         }
     }

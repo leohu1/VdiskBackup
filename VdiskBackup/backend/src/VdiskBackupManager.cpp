@@ -3,6 +3,7 @@
 //
 
 #include "VdiskBackupManager.h"
+#include "BackupConfigManager.h"
 #include "FileSystem.h"
 #include "VirtDiskSystem.h"
 #include "VolumeSystem.h"
@@ -23,7 +24,7 @@ void VdiskBackupManager::GetAllConfigs() {
     for (auto & it : vec) {
         if (!it.drive_letter.empty()){
             fs::path base_path = utils::removeSpaces(it.drive_letter) + "\\";
-            fs::path path = base_path / VdiskBackupManager::ConfigName;
+            fs::path path = base_path / BackupConfigManager::ConfigName;
             if (fs::exists(path)){
                 SPDLOG_INFO("Get config at " + fs::absolute(path).string());
                 YAML::Node configs_data = YAML::LoadFile(fs::absolute(path).string());
@@ -93,7 +94,7 @@ void VdiskBackupManager::StartBackup() {
                 FileSize original_file_size = FileSystem::GetFileSize(config.source_path.string());
                 if (original_file_size.GetSizeBits() >= config.min_compact_size){
                     SPDLOG_INFO("Compact vhdx with filesystem aware, file: {}", config.source_path.string());
-                    VirtDiskSystem::CompactVdiskFileSystemAware(config.source_path.string());
+                    VirtDiskSystem::CompactVdisk(config.source_path.string(), VirtDiskSystem::FSAware);
                     out << YAML::BeginMap;
                     out << YAML::Key << "id" << YAML::Value << "fs_aware_compact";
                     out << YAML::Key << "original_size" << YAML::Value << original_file_size.GetSizeBits();
@@ -108,7 +109,7 @@ void VdiskBackupManager::StartBackup() {
                 FileSize original_file_size = FileSystem::GetFileSize(config.source_path.string());
                 if (original_file_size.GetSizeBits() >= config.min_compact_size){
                     SPDLOG_INFO("Compact vhdx with filesystem agnostic, file: {}", config.source_path.string());
-                    VirtDiskSystem::CompactVdiskFileSystemAgnostic(config.source_path.string());
+                    VirtDiskSystem::CompactVdisk(config.source_path.string(), VirtDiskSystem::FSAgnostic);
                     out << YAML::BeginMap;
                     out << YAML::Key << "id" << YAML::Value << "fs_agnostic_compact";
                     out << YAML::Key << "original_size" << YAML::Value << original_file_size.GetSizeBits();
@@ -127,8 +128,9 @@ void VdiskBackupManager::StartBackup() {
                         SPDLOG_INFO("Merging vhdx {} to {}", config.source_path.string(), fs::absolute(parent_path).string());
                         VirtDiskSystem::MergeVdiskToParent(config.source_path.string());
                         DWORD dw_error;
-                        if ((dw_error = DeleteFileW(utils::charToLPWSTR(config.source_path.string().c_str()))) != 0){
-                            SPDLOG_ERROR("Get Error (%d): %s\n", dw_error, utils::ErrorMessage(dw_error));
+                        if (DeleteFileW(utils::charToLPWSTR(config.source_path.string().c_str())) == 0){
+                            dw_error = GetLastError();
+                            SPDLOG_ERROR("Get Error ({}): {}\n", dw_error, utils::ErrorMessage(dw_error));
                         }
                         fs::rename(parent_path, config.source_path);
                         out << YAML::BeginMap;
@@ -190,14 +192,14 @@ void VdiskBackupManager::StartBackup() {
             out << YAML::EndMap;
             out << YAML::EndSeq;
             out << YAML::EndMap;
-            std::ofstream f_result((config.destination_path / VdiskBackupManager::BackupResult).string());
+            std::ofstream f_result((config.destination_path / BackupConfigManager::BackupResult).string());
             f_result << out.c_str();
             f_result.close();
         }
     }
 }
 std::map<std::string, std::string> VdiskBackupManager::GetLastMd5(fs::path path) {
-    path = path / VdiskBackupManager::BackupResult;
+    path = path / BackupConfigManager::BackupResult;
     std::map<std::string, std::string> out;
     if (fs::exists(path)){
         YAML::Node config = YAML::LoadFile(path.string());

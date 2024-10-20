@@ -38,7 +38,7 @@ public:
     }
 
 private:
-    void save(const QString &key, QVariant val);
+    void save(const QString &key, const QVariant& val);
     QVariant get(const QString &key, QVariant def = {});
 
 private:

@@ -7,11 +7,15 @@
 
 
 namespace VirtDiskSystem{
-    bool CompactVdiskFileSystemAware(std::string path);
-    bool CompactVdiskFileSystemAgnostic(std::string path);
+    enum VdiskCompactOption{
+        FSAware,
+        FSAgnostic
+    };
+    bool CompactVdisk(std::string path, VdiskCompactOption option);
     std::string GetVdiskParent(std::string path);
     std::vector<std::string> GetVdiskParents(const std::string& path);
     bool MergeVdiskToParent(std::string path);
+    bool BuildChildVdisk(std::string parent_path);
 };
 
 #endif //VDISKBACKUP_VIRTDISKSYSTEM_H

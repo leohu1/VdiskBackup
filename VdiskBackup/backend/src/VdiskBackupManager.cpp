@@ -132,7 +132,10 @@ void VdiskBackupManager::StartBackup() {
                             dw_error = GetLastError();
                             SPDLOG_ERROR("Get Error ({}): {}\n", dw_error, utils::ErrorMessage(dw_error));
                         }
-                        fs::rename(parent_path, config.source_path);
+//                        fs::rename(parent_path, config.source_path);
+                        if (!VirtDiskSystem::BuildChildVdisk(config.source_path.string(), parent_path.string())){
+                            SPDLOG_ERROR("Get Error Building Child Vdisk");
+                        }
                         out << YAML::BeginMap;
                         out << YAML::Key << "id" << YAML::Value << "merge_vdisk";
                         out << YAML::Key << "original_size" << YAML::Value << original_file_size.GetSizeBits();

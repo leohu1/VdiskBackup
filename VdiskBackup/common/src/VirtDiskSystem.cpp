@@ -287,11 +287,27 @@ bool VirtDiskSystem::BuildChildVdisk(std::string path, std::string parent_path){
     CREATE_VIRTUAL_DISK_PARAMETERS CVparameters;
     CVparameters.Version = CREATE_VIRTUAL_DISK_VERSION_1;
     CVparameters.Version1.ParentPath = p_p_w;
+    CVparameters.Version1.SourcePath = nullptr;
     CVparameters.Version1.UniqueId = {0};
     CVparameters.Version1.BlockSizeInBytes = CREATE_VIRTUAL_DISK_PARAMETERS_DEFAULT_BLOCK_SIZE;
     CVparameters.Version1.MaximumSize = 0;
+    CVparameters.Version1.SectorSizeInBytes = 512;
     VIRTUAL_STORAGE_TYPE vst;
     vst.DeviceId = VIRTUAL_STORAGE_TYPE_DEVICE_VHDX;
     vst.VendorId = VIRTUAL_STORAGE_TYPE_VENDOR_MICROSOFT;
+    void *handle;
+    DWORD CreateVdiskResult = CreateVirtualDisk(&vst, p_w,
+                                                VIRTUAL_DISK_ACCESS_ALL, nullptr,
+                                                CREATE_VIRTUAL_DISK_FLAG_NONE, 0,
+                                                &CVparameters, nullptr, &handle);
+    if (CreateVdiskResult != ERROR_SUCCESS){
+        DWORD dw_error = GetLastError();
+        LPCTSTR errMsg = utils::ErrorMessage(dw_error);
+        SPDLOG_ERROR("Get Error ({}): {}\n", dw_error, errMsg);
+        LocalFree((LPVOID)errMsg);
+        return false;
+    }
+    CloseHandle(handle);
+    return true;
 
 }

@@ -34,13 +34,13 @@ else ()
             ${frontend_srcs}
     )
 endif ()
-file(GLOB QML_FILES qml/*.qml)
-qt6_add_resources(${PROJECT_NAME}_frontend "qml"
-        PREFIX
-        "/frontend"
-        FILES
-        ${QML_FILES}
-)
+#file(GLOB QML_FILES qml/*.qml)
+#qt6_add_resources(${PROJECT_NAME}_frontend "qml"
+#        PREFIX
+#        "/frontend"
+#        FILES
+#        ${QML_FILES}
+#)
 
 #复制程序运行所需要的动态库
 if (WIN32)

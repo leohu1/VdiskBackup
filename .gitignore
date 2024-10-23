@@ -38,6 +38,10 @@
 # *.iml
 # *.ipr
 
+# QT
+.idea/qmlSettings.xml
+.idea/QtSettings.xml
+
 # CMake
 cmake-build-*/*
 

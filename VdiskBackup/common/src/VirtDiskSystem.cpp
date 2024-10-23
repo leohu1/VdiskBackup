@@ -2,6 +2,7 @@
 #include "utils.h"
 #include "indicators/cursor_control.hpp"
 #include "indicators/progress_bar.hpp"
+#include "indicators/block_progress_bar.hpp"
 #include "spdlog/spdlog.h"
 #include <Shlwapi.h>
 #include <Windows.h>
@@ -53,12 +54,9 @@ bool VirtDiskSystem::CompactVdisk(std::string path, VdiskCompactOption option){
     OVERLAPPED overlap;
     memset(&overlap, 0, sizeof(overlap));
 
-    ProgressBar bar{
+    BlockProgressBar bar{
             option::BarWidth{50},
             option::Start{"["},
-            option::Fill{"="},
-            option::Lead{"="},
-            option::Remainder{"-"},
             option::End{"]"},
             option::ShowElapsedTime{true},
             option::ShowRemainingTime{true},
@@ -91,8 +89,11 @@ bool VirtDiskSystem::CompactVdisk(std::string path, VdiskCompactOption option){
             if(virtualDiskProgress.OperationStatus != ERROR_IO_PENDING){
                 bPending = FALSE;
             }
-            bar.set_option(option::MaxProgress{virtualDiskProgress.CompletionValue});
-            bar.set_progress(virtualDiskProgress.CurrentValue);
+            if (virtualDiskProgress.CompletionValue == 0){
+                bar.set_progress(0);
+            }else{
+                bar.set_progress((float)virtualDiskProgress.CurrentValue / (float )virtualDiskProgress.CompletionValue);
+            }
             Sleep(100);
         }
     }else{
@@ -101,6 +102,7 @@ bool VirtDiskSystem::CompactVdisk(std::string path, VdiskCompactOption option){
         SPDLOG_ERROR("Get Error ({}): {}\n", dw_error, errMsg);
         LocalFree((LPVOID)errMsg);
     }
+    bar.mark_as_completed();
     if (option == FSAware){
         DWORD result_detach = DetachVirtualDisk(handle, DETACH_VIRTUAL_DISK_FLAG_NONE, 0);
         if (result_detach != 0){
@@ -233,12 +235,9 @@ bool VirtDiskSystem::MergeVdiskToParent(std::string path){
     VIRTUAL_DISK_PROGRESS virtualDiskProgress = {0};
     LPCTSTR errMsg = nullptr;
 
-    ProgressBar bar{
+    BlockProgressBar bar{
             option::BarWidth{50},
             option::Start{"["},
-            option::Fill{"="},
-            option::Lead{"="},
-            option::Remainder{"-"},
             option::End{"]"},
             option::ShowElapsedTime{true},
             option::ShowRemainingTime{true},
@@ -264,9 +263,11 @@ bool VirtDiskSystem::MergeVdiskToParent(std::string path){
             if(virtualDiskProgress.OperationStatus != ERROR_IO_PENDING){
                 bPending = FALSE;
             }
-            bar.set_option(option::MaxProgress{virtualDiskProgress.CompletionValue});
-            bar.set_progress(virtualDiskProgress.CurrentValue);
-            Sleep(100);
+            if (virtualDiskProgress.CompletionValue == 0){
+                bar.set_progress(0);
+            }else{
+                bar.set_progress((float)virtualDiskProgress.CurrentValue / (float )virtualDiskProgress.CompletionValue);
+            }            Sleep(100);
         }
     }else{
         dw_error = GetLastError();
@@ -274,6 +275,7 @@ bool VirtDiskSystem::MergeVdiskToParent(std::string path){
         SPDLOG_ERROR("Get Error ({}): {}\n", dw_error, errMsg);
         LocalFree((LPVOID)errMsg);
     }
+    bar.mark_as_completed();
 
     CloseHandle(handle);
     return true;

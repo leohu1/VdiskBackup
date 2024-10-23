@@ -26,28 +26,29 @@ FluLauncher {
     }
     Component.onCompleted: {
         FluApp.init(app,Qt.locale(TranslateHelper.current))
-        FluApp.windowIcon = "qrc:/example/res/image/favicon.ico"
+        // FluApp.windowIcon = "qrc:/example/res/image/favicon.ico"
         FluApp.useSystemAppBar = SettingsHelper.getUseSystemAppBar()
         FluTheme.darkMode = SettingsHelper.getDarkMode()
         FluTheme.animationEnabled = true
         FluRouter.routes = {
-            "/":"qrc:/example/qml/window/MainWindow.qml",
-            "/about":"qrc:/example/qml/window/AboutWindow.qml",
-            "/login":"qrc:/example/qml/window/LoginWindow.qml",
-            "/hotload":"qrc:/example/qml/window/HotloadWindow.qml",
-            "/crash":"qrc:/example/qml/window/CrashWindow.qml",
-            "/singleTaskWindow":"qrc:/example/qml/window/SingleTaskWindow.qml",
-            "/standardWindow":"qrc:/example/qml/window/StandardWindow.qml",
-            "/singleInstanceWindow":"qrc:/example/qml/window/SingleInstanceWindow.qml",
-            "/pageWindow":"qrc:/example/qml/window/PageWindow.qml",
-            "/hotkey":"qrc:/example/qml/window/HotkeyWindow.qml"
+            "/":"qrc:/window/MainWindow.qml",
+            // "/about":"qrc:/example/qml/window/AboutWindow.qml",
+            // "/login":"qrc:/example/qml/window/LoginWindow.qml",
+            // "/hotload":"qrc:/example/qml/window/HotloadWindow.qml",
+            // "/crash":"qrc:/example/qml/window/CrashWindow.qml",
+            // "/singleTaskWindow":"qrc:/example/qml/window/SingleTaskWindow.qml",
+            // "/standardWindow":"qrc:/example/qml/window/StandardWindow.qml",
+            // "/singleInstanceWindow":"qrc:/example/qml/window/SingleInstanceWindow.qml",
+            // "/pageWindow":"qrc:/example/qml/window/PageWindow.qml",
+            // "/hotkey":"qrc:/example/qml/window/HotkeyWindow.qml"
         }
         var args = Qt.application.arguments
-        if(args.length>=2 && args[1].startsWith("-crashed=")){
-            FluRouter.navigate("/crash",{crashFilePath:args[1].replace("-crashed=","")})
-        }else{
-            FluRouter.navigate("/")
-        }
+        // if(args.length>=2 && args[1].startsWith("-crashed=")){
+        //     FluRouter.navigate("/crash",{crashFilePath:args[1].replace("-crashed=","")})
+        // }else{
+        //     FluRouter.navigate("/")
+        // }
+        FluRouter.navigate("/")
     }
 
     property alias hotkeys: object_hotkey

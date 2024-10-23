@@ -1,3 +1,6 @@
 <RCC>
     <qresource prefix="/"/>
+    <qresource prefix="/frontend">
+        <file>qml/App.qml</file>
+    </qresource>
 </RCC>

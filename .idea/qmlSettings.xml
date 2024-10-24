@@ -12,7 +12,26 @@
             </PerProfileState>
           </value>
         </entry>
+        <entry key="Debug-Visual Studio">
+          <value>
+            <PerProfileState>
+              <option name="myExtraQmlPaths">
+                <list>
+                  <option value="C:\Users\Administrator\CLionProjects\VdiskBackup\out\build\x64-debug\_deps\fluentui-src\src\" />
+                </list>
+              </option>
+              <option name="myLSPEnabled" value="true" />
+            </PerProfileState>
+          </value>
+        </entry>
         <entry key="Release">
+          <value>
+            <PerProfileState>
+              <option name="myLSPCompletionEnabled" value="true" />
+            </PerProfileState>
+          </value>
+        </entry>
+        <entry key="Release-Visual Studio">
           <value>
             <PerProfileState />
           </value>

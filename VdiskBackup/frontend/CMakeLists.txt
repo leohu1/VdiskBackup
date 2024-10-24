@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Quick Svg Network)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Quick Svg Network)
+qt_policy(SET QTP0004 OLD)
 include(FetchContent)
 FetchContent_Declare(
         FluentUI

@@ -80,20 +80,6 @@ FluWindow {
         }
     }
 
-    Component{
-        id: nav_item_right_menu
-        FluMenu{
-            width: 186
-            FluMenuItem{
-                text: qsTr("Open in Separate Window")
-                font: FluTextStyle.Caption
-                onClicked: {
-                    FluRouter.navigate("/pageWindow",{title:modelData.title,url:modelData.url})
-                }
-            }
-        }
-    }
-
     Flipable{
         id:flipable
         anchors.fill: parent
@@ -254,16 +240,6 @@ FluWindow {
             FluTheme.darkMode = FluThemeType.Light
         }else{
             FluTheme.darkMode = FluThemeType.Dark
-        }
-    }
-
-    Shortcut {
-        sequence: "F5"
-        context: Qt.WindowShortcut
-        onActivated: {
-            if(flipable.flipped){
-                loader.reload()
-            }
         }
     }
 }

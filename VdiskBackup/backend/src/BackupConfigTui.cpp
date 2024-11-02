@@ -105,14 +105,16 @@ void BackupConfigTui::ShowGUI() {
 
     screen.Loop(component);
 
-    VdiskBackupConfig config;
-    config.source_path = source_path_string;
-    config.destination_path = dest_path_string;
-    config.min_compact_size = std::stoull(min_compact_size_string);
-    config.min_merge_size = std::stoull(min_merge_size_string);
-    config.buffer_size = std::stoull(buffer_size_string);
-    config.enable_merge = merge_selected == 1;
-    config.enable_fs_aware = fs_aware_selected == 1;
-    config.enable_fs_agnostic = fs_agnostic_selected == 1;
-    BackupConfigManager::WriteConfig(config);
+    if (!cancel){
+        VdiskBackupConfig config;
+        config.source_path = source_path_string;
+        config.destination_path = dest_path_string;
+        config.min_compact_size = std::stoull(min_compact_size_string);
+        config.min_merge_size = std::stoull(min_merge_size_string);
+        config.buffer_size = std::stoull(buffer_size_string);
+        config.enable_merge = merge_selected == 1;
+        config.enable_fs_aware = fs_aware_selected == 1;
+        config.enable_fs_agnostic = fs_agnostic_selected == 1;
+        BackupConfigManager::WriteConfig(config);
+    }
 }

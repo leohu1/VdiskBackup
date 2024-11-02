@@ -77,7 +77,10 @@ void VdiskBackupManager::GetAllConfigs() {
 void VdiskBackupManager::StartBackup() {
     for (const auto& i : backup_configs){
         VdiskBackupConfig config = i.second;
-        if (fs::exists(config.source_path)){
+        if (!fs::exists(config.source_path)){
+            SPDLOG_INFO("Source did not exist {}", config.source_path.string());
+            continue;
+        }else{
             std::map<fs::path, std::string> md5_map;
             fs::create_directories(config.destination_path);
             for (const auto& k : VdiskBackupManager::GetLastMd5(config.destination_path)){
@@ -132,7 +135,7 @@ void VdiskBackupManager::StartBackup() {
                             dw_error = GetLastError();
                             SPDLOG_ERROR("Get Error ({}): {}\n", dw_error, utils::ErrorMessage(dw_error));
                         }
-//                        fs::rename(parent_path, config.source_path);
+                        //                        fs::rename(parent_path, config.source_path);
                         if (!VirtDiskSystem::BuildChildVdisk(config.source_path.string(), parent_path.string())){
                             SPDLOG_ERROR("Get Error Building Child Vdisk");
                         }
@@ -178,10 +181,10 @@ void VdiskBackupManager::StartBackup() {
                 fs::path dest_path = config.destination_path / o.filename();
                 std::string *md5;
                 if (!FileSystem::CopyFileWithProgressBar(o,
-                                                        dest_path,
-                                                        &md5,
-                                                        std::format("Backup {} -> {}", o.string(), dest_path.string()),
-                                                        config.buffer_size)){
+                                                         dest_path,
+                                                         &md5,
+                                                         std::format("Backup {} -> {}", o.string(), dest_path.string()),
+                                                         config.buffer_size)){
                     SPDLOG_ERROR("backup {} failed", config.source_path.string());
                     continue;
                 }
@@ -235,6 +238,11 @@ std::map<std::string, std::string> VdiskBackupManager::GetLastMd5(fs::path path)
 void VdiskBackupManager::CleanUp() {
     SPDLOG_INFO("Cleaning up configs");
     std::vector<std::string> log_messages = ringbuffer_sink->last_formatted();
+    std::ofstream l("log.txt", std::ios::app);
+    for (const auto& k : log_messages){
+        l << k << std::endl;
+    }
+    l.close();
     for (const auto& i : backup_configs){
         for (const auto& j : i.second.config_paths){
             if (fs::exists(j)){

@@ -82,29 +82,29 @@ QString Log::prettyProductInfoWrapper() {
 
 static inline void messageHandler(const QtMsgType type, const QMessageLogContext &context,
                                   const QString &msg) {
-    auto logger = spdlog::get(g_app.toStdString());
+    auto logger = spdlog::get(std::string(g_app.toLocal8Bit()));
     QByteArray localMsg = msg.toLocal8Bit();
     spdlog::source_loc source = {"unknown", 0, "unknown"};
     if (context.file){
-        source.filename = context.file;
+        source.filename = context.file != nullptr ? context.file : "";
         source.line = context.line;
-        source.funcname = context.function;
+        source.funcname = context.function != nullptr ? context.function : "";
     }
     switch (type) {
         case QtDebugMsg:
-            logger->log(source, spdlog::level::debug, msg.toStdString());
+            logger->log(source, spdlog::level::debug, std::string(msg.toLocal8Bit()));
             break;
         case QtInfoMsg:
-            logger->log(source, spdlog::level::info, msg.toStdString());
+            logger->log(source, spdlog::level::info, std::string(msg.toLocal8Bit()));
             break;
         case QtWarningMsg:
-            logger->log(source, spdlog::level::warn, msg.toStdString());
+            logger->log(source, spdlog::level::warn, std::string(msg.toLocal8Bit()));
             break;
         case QtCriticalMsg:
-            logger->log(source, spdlog::level::critical, msg.toStdString());
+            logger->log(source, spdlog::level::critical, std::string(msg.toLocal8Bit()));
             break;
         case QtFatalMsg:
-            logger->log(source, spdlog::level::err, msg.toStdString());
+            logger->log(source, spdlog::level::err, std::string(msg.toLocal8Bit()));
             std::abort();
     }
 }
@@ -133,9 +133,9 @@ void Log::setup(char *argv[], const QString &app) {
     g_file_path = logDir.filePath(logFileName);
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 
-    auto rotating_file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(logFileName.toStdString(), 1048576 * 5, 3);
+    auto rotating_file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(std::string(logFileName.toLocal8Bit()), 1048576 * 5, 3);
     std::vector<spdlog::sink_ptr> sinks {console_sink, rotating_file_sink};
-    auto logger = std::make_shared<spdlog::logger>(g_app.toStdString(),sinks.begin(), sinks.end());
+    auto logger = std::make_shared<spdlog::logger>(std::string(g_app.toLocal8Bit()),sinks.begin(), sinks.end());
     logger->set_pattern("[%n] [%Y-%m-%d %H:%M:%S.%e] [%l] [%t] [%s %!:%#]  %v");
     logger->set_level(spdlog::level::debug);
     spdlog::register_logger(logger);

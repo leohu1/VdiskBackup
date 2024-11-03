@@ -116,10 +116,11 @@ fabric.properties
 *.out
 *.app
 
+# Qt
+*.qm
+
 
 # CMake ================================
-!VdiskBackup/log4cplus/*
-!VdiskBackup/indicators/*
 build/
 publish/
 CMakeLists.txt.user
@@ -134,5 +135,4 @@ compile_commands.json
 CTestTestfile.cmake
 
 
-!VdiskBackup/log4cplus/lib/log4cplusSU.lib
 

@@ -86,8 +86,8 @@ file(GLOB TS_FILE_PATHS ${CMAKE_CURRENT_LIST_DIR}/ *.ts)
 add_custom_target(Script-UpdateTranslations
         COMMAND ${QT_LUPDATE} ${CMAKE_CURRENT_LIST_DIR} -ts frontend_en_US.ts WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
         COMMAND ${QT_LUPDATE} ${CMAKE_CURRENT_LIST_DIR} -ts frontend_zh_CN.ts WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-        COMMAND ${QT_LRELEASE} ${PROJECT_NAME}_en_US.ts WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-        COMMAND ${QT_LRELEASE} ${PROJECT_NAME}_zh_CN.ts WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+        COMMAND ${QT_LRELEASE} frontend_en_US.ts WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+        COMMAND ${QT_LRELEASE} frontend_zh_CN.ts WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${APPLICATION_DIR_PATH}/i18n
         COMMAND ${CMAKE_COMMAND} -E copy frontend_en_US.qm frontend_zh_CN.qm ${APPLICATION_DIR_PATH}/i18n
         SOURCES ${TS_FILE_PATHS}
@@ -101,3 +101,27 @@ target_link_libraries(${PROJECT_NAME}_frontend PRIVATE
         fluentuiplugin
         spdlog::spdlog_header_only
 )
+
+target_compile_definitions(${PROJECT_NAME}_frontend
+        PRIVATE $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:QT_QML_DEBUG>)
+
+if (APPLE)
+    find_program(QT_DEPLOY_QT NAMES macdeployqt)
+    add_custom_command(
+            TARGET ${PROJECT_NAME}_frontend
+            POST_BUILD
+            COMMAND ${QT_DEPLOY_QT} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${PROJECT_NAME}_frontend.app -qmldir=${CMAKE_CURRENT_LIST_DIR}
+            COMMENT "MacOs Deploying Qt Dependencies After Build........."
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif ()
+if (WIN32)
+    find_program(QT_DEPLOY_QT NAMES windeployqt)
+    add_custom_command(
+            TARGET ${PROJECT_NAME}_frontend
+            POST_BUILD
+            COMMAND ${QT_DEPLOY_QT} --qmldir=${CMAKE_CURRENT_LIST_DIR} --plugindir ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/plugins --no-translations --compiler-runtime ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${PROJECT_NAME}_frontend.exe
+            COMMENT "Windows Deploying Qt Dependencies After Build........."
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif ()

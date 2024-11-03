@@ -25,7 +25,6 @@ Q_IMPORT_QML_PLUGIN(FluentUIPlugin)
 #endif
 
 int main(int argc, char *argv[]) {
-    const char *uri = "example";
 #ifdef WIN32
     ::SetUnhandledExceptionFilter(MyUnhandledExceptionFilter);
     qputenv("QT_QPA_PLATFORM", "windows:darkmode=2");
@@ -48,7 +47,7 @@ int main(int argc, char *argv[]) {
     QApplication::setApplicationVersion("1.0");
     QApplication::setQuitOnLastWindowClosed(false);
     SettingsHelper::getInstance()->init(argv);
-    Log::setup(argv, uri);
+    Log::setup(argv, "VdiskBackup");
 #if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
 #endif
@@ -67,7 +66,7 @@ int main(int argc, char *argv[]) {
 #ifdef FLUENTUI_BUILD_STATIC_LIB
     FluentUI::getInstance()->registerTypes(&engine);
 #endif
-    const QUrl url(QStringLiteral("qrc:/frontend/App.qml"));
+    const QUrl url(QStringLiteral("qrc:/frontend/qml/App.qml"));
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreated, &app,
         [url](QObject *obj, const QUrl &objUrl) {

@@ -88,8 +88,8 @@ add_custom_target(Script-UpdateTranslations
         COMMAND ${QT_LUPDATE} ${CMAKE_CURRENT_LIST_DIR} -ts frontend_zh_CN.ts WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
         COMMAND ${QT_LRELEASE} frontend_en_US.ts WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
         COMMAND ${QT_LRELEASE} frontend_zh_CN.ts WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${APPLICATION_DIR_PATH}/i18n
-        COMMAND ${CMAKE_COMMAND} -E copy frontend_en_US.qm frontend_zh_CN.qm ${APPLICATION_DIR_PATH}/i18n
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/i18n
+        COMMAND ${CMAKE_COMMAND} -E copy frontend_en_US.qm frontend_zh_CN.qm ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/i18n
         SOURCES ${TS_FILE_PATHS}
 )
 

@@ -35,13 +35,6 @@ else ()
             ${frontend_srcs}
     )
 endif ()
-#file(GLOB QML_FILES qml/*.qml)
-#qt6_add_resources(${PROJECT_NAME}_frontend "qml"
-#        PREFIX
-#        "/frontend"
-#        FILES
-#        ${QML_FILES}
-#)
 
 #复制程序运行所需要的动态库
 if (WIN32)
@@ -59,8 +52,7 @@ endif ()
 
 #复制FluentUI源码到运行目录下，用于脚手架生成
 file(MAKE_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/source/)
-file(COPY ${FluentUI_SOURCE_DIR}/src/ DESTINATION ${APPLICATION_DIR_PATH}/source/)
-
+file(COPY ${FluentUI_SOURCE_DIR}/src/ DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/source/)
 
 #如果是静态库则需要手动注册插件，导入FluentUI.h头文件
 target_include_directories(${PROJECT_NAME}_frontend PRIVATE
@@ -104,6 +96,10 @@ target_link_libraries(${PROJECT_NAME}_frontend PRIVATE
 
 target_compile_definitions(${PROJECT_NAME}_frontend
         PRIVATE $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:QT_QML_DEBUG>)
+
+target_link_options(${PROJECT_NAME}_frontend
+        PRIVATE "/manifest" "/level='requireAdministrator'" "/uiAccess='false'" "/activeCodePage='UTF-8'")
+
 
 if (APPLE)
     find_program(QT_DEPLOY_QT NAMES macdeployqt)

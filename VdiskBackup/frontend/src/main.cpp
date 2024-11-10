@@ -9,6 +9,8 @@
 #include <QQuickWindow>
 #include <QSslConfiguration>
 #include <QtWidgets/QApplication>
+#include <iostream>
+
 
 #ifdef FLUENTUI_BUILD_STATIC_LIB
 #  if (QT_VERSION > QT_VERSION_CHECK(6, 2, 0))
@@ -25,9 +27,12 @@ Q_IMPORT_QML_PLUGIN(FluentUIPlugin)
 #endif
 
 int main(int argc, char *argv[]) {
+    std::setlocale(LC_ALL, ".utf-8");
 #ifdef WIN32
     ::SetUnhandledExceptionFilter(MyUnhandledExceptionFilter);
     qputenv("QT_QPA_PLATFORM", "windows:darkmode=2");
+    SetConsoleCP(CP_UTF8);
+    SetConsoleOutputCP(CP_UTF8);
 #endif
 #if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
     qputenv("QT_QUICK_CONTROLS_STYLE", "Basic");
@@ -63,6 +68,8 @@ int main(int argc, char *argv[]) {
 
     QQmlApplicationEngine engine;
     TranslateHelper::getInstance()->init(&engine);
+    engine.rootContext()->setContextProperty("SettingsHelper", SettingsHelper::getInstance());
+    engine.rootContext()->setContextProperty("TranslateHelper", TranslateHelper::getInstance());
 #ifdef FLUENTUI_BUILD_STATIC_LIB
     FluentUI::getInstance()->registerTypes(&engine);
 #endif

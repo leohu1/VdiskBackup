@@ -485,47 +485,45 @@
         <translation type="obsolete">夜间模式</translation>
     </message>
     <message>
-        <location filename="qml/window/MainWindow.qml" line="68"/>
-        <location filename="qml/window/MainWindow.qml" line="76"/>
         <source>Quit</source>
-        <translation type="unfinished">退出</translation>
+        <translation type="obsolete">退出</translation>
     </message>
     <message>
-        <location filename="qml/window/MainWindow.qml" line="69"/>
         <source>Are you sure you want to exit the program?</source>
-        <translation type="unfinished">您确定要退出程序吗</translation>
+        <translation type="obsolete">您确定要退出程序吗</translation>
     </message>
     <message>
-        <location filename="qml/window/MainWindow.qml" line="70"/>
         <source>Minimize</source>
-        <translation type="unfinished">最小化</translation>
+        <translation type="obsolete">最小化</translation>
     </message>
     <message>
-        <location filename="qml/window/MainWindow.qml" line="73"/>
         <source>Friendly Reminder</source>
-        <translation type="unfinished">友情提示</translation>
+        <translation type="obsolete">友情提示</translation>
     </message>
     <message>
-        <location filename="qml/window/MainWindow.qml" line="73"/>
         <source>FluentUI is hidden from the tray, click on the tray to activate the window again</source>
-        <translation type="unfinished">FluentUI 在托盘中处于隐藏状态，单击托盘以再次激活窗口</translation>
+        <translation type="obsolete">FluentUI 在托盘中处于隐藏状态，单击托盘以再次激活窗口</translation>
     </message>
     <message>
-        <location filename="qml/window/MainWindow.qml" line="77"/>
         <source>Cancel</source>
-        <translation type="unfinished">取消</translation>
+        <translation type="obsolete">取消</translation>
+    </message>
+    <message>
+        <location filename="qml/window/MainWindow.qml" line="176"/>
+        <source>This is a text that can be copied</source>
+        <translation type="unfinished">这是一个可以复制的文本</translation>
     </message>
     <message>
         <source>Open in Separate Window</source>
         <translation type="obsolete">在独立窗口中打开</translation>
     </message>
     <message>
-        <location filename="qml/window/MainWindow.qml" line="165"/>
+        <location filename="qml/window/MainWindow.qml" line="143"/>
         <source>Click Time</source>
         <translation type="unfinished">点击次数</translation>
     </message>
     <message>
-        <location filename="qml/window/MainWindow.qml" line="175"/>
+        <location filename="qml/window/MainWindow.qml" line="153"/>
         <source>Search</source>
         <translation type="unfinished">搜索</translation>
     </message>

@@ -31,7 +31,7 @@ FluLauncher {
         FluTheme.darkMode = SettingsHelper.getDarkMode()
         FluTheme.animationEnabled = true
         FluRouter.routes = {
-            "/":"qrc:/window/MainWindow.qml",
+            "/":"qrc:/frontend/qml/window/MainWindow.qml",
             // "/about":"qrc:/example/qml/window/AboutWindow.qml",
             // "/login":"qrc:/example/qml/window/LoginWindow.qml",
             // "/hotload":"qrc:/example/qml/window/HotloadWindow.qml",

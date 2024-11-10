@@ -2,5 +2,6 @@
     <qresource prefix="/"/>
     <qresource prefix="/frontend">
         <file>qml/App.qml</file>
+        <file>qml/window/MainWindow.qml</file>
     </qresource>
 </RCC>

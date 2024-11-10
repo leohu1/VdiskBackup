@@ -7,7 +7,6 @@ import Qt.labs.platform 1.1
 import FluentUI 1.0
 
 FluWindow {
-
     id:window
     title: "FluentUI"
     width: 1000
@@ -20,12 +19,8 @@ FluWindow {
         height: 30
         showDark: true
         darkClickListener:(button)=>handleDarkChanged(button)
-        closeClickListener: ()=>{dialog_close.open()}
+        closeClickListener: ()=>{FluRouter.exit(0)}
         z:7
-    }
-
-    FluentInitializrWindow{
-        id:fluent_Initializr
     }
 
     Component.onDestruction: {
@@ -60,23 +55,6 @@ FluWindow {
         interval: 150
         onTriggered: {
             window.hide()
-        }
-    }
-
-    FluContentDialog{
-        id: dialog_close
-        title: qsTr("Quit")
-        message: qsTr("Are you sure you want to exit the program?")
-        negativeText: qsTr("Minimize")
-        buttonFlags: FluContentDialogType.NegativeButton | FluContentDialogType.NeutralButton | FluContentDialogType.PositiveButton
-        onNegativeClicked: {
-            system_tray.showMessage(qsTr("Friendly Reminder"),qsTr("FluentUI is hidden from the tray, click on the tray to activate the window again"));
-            timer_window_hide_delay.restart()
-        }
-        positiveText: qsTr("Quit")
-        neutralText: qsTr("Cancel")
-        onPositiveClicked:{
-            FluRouter.exit(0)
         }
     }
 
@@ -194,17 +172,8 @@ FluWindow {
 
     Component{
         id: com_reveal
-        CircularReveal{
-            id: reveal
-            target: window.containerItem()
-            anchors.fill: parent
-            onAnimationFinished:{
-                //动画结束后释放资源
-                loader_reveal.sourceComponent = undefined
-            }
-            onImageChanged: {
-                changeDark()
-            }
+        FluCopyableText{
+            text: qsTr("This is a text that can be copied")
         }
     }
 
